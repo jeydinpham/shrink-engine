@@ -1,4 +1,4 @@
-# Video Compressor
+# Shrink Engine
 
 A web app that compresses a video down to a target file size (10MB, 20MB, 50MB, 100MB, or a custom size). Everything runs client-side — no upload, no server, the video never leaves your browser.
 

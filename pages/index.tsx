@@ -6,11 +6,12 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>Video Compressor — shrink videos to a target size</title>
+        <title>Shrink Engine</title>
         <meta
           name="description"
-          content="Compress a video down to an exact target file size (8MB, 25MB, 50MB, 100MB, or custom), entirely in your browser."
+          content="Perfectly compressed files entirely in your browser. Get around Discord's file size limit and share your videos with ease!"
         />
+        <meta name="theme-color" content="#150c07" />
         <link rel="icon" href="/favicon.png" />
       </Head>
 
