@@ -35,6 +35,9 @@ const STALL_WATCHDOG_MS = 15_000;
 
 class StallError extends Error {}
 
+/** A failure that's about the user's input, not the engine — retrying on a different engine wouldn't help. */
+class InputError extends Error {}
+
 function withProgress(ffmpeg: FFmpeg, map: (progress: number) => void) {
 	const handler = ({ progress }: { progress: number }) => map(Math.min(Math.max(progress, 0), 1));
 	ffmpeg.on('progress', handler);
@@ -115,7 +118,7 @@ async function runPipeline(
 		const trimEnd = Math.max(0, options.trimEndSec || 0);
 		const effectiveDuration = totalDuration - trimStart - trimEnd;
 		if (effectiveDuration <= 0.5) {
-			throw new Error('That trim range leaves little or no video to compress.');
+			throw new InputError('That trim range leaves little or no video to compress.');
 		}
 
 		const { videoBitrateKbps, audioBitrateKbps, belowMinimum } = planBitrate(effectiveDuration, options);
@@ -225,9 +228,16 @@ export async function compressWithFfmpeg(
 	try {
 		return await runPipeline(engine, file, options, callbacks, engine.multiThreaded ? STALL_WATCHDOG_MS : null);
 	} catch (err) {
-		if (!(err instanceof StallError) || !engine.multiThreaded) throw err;
+		// Only worth retrying on the reliable single-threaded engine if we
+		// were on multi-threaded AND the failure looks like an engine
+		// problem — a stall, a crash, an out-of-memory abort (confirmed in
+		// the wild on mobile Safari with a real ~23MB video) — rather than
+		// bad input, which would just fail identically on any engine.
+		if (!engine.multiThreaded || err instanceof InputError) throw err;
 
-		callbacks.onLog?.(`[app] ${err.message} — switching to the single-threaded engine and retrying…`);
+		const reason =
+			err instanceof StallError ? err.message : `multi-threaded engine failed (${err instanceof Error ? err.message : 'unknown error'})`;
+		callbacks.onLog?.(`[app] ${reason} — switching to the single-threaded engine and retrying…`);
 		await terminateMultiThreaded();
 		const fallbackEngine = await getFFmpeg({ requireSingleThreaded: true });
 		return runPipeline(fallbackEngine, file, options, callbacks, null);

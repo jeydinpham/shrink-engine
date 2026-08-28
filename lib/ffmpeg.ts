@@ -12,9 +12,20 @@ let stEnginePromise: Promise<LoadedEngine> | null = null;
 // subsequent compression this session and go straight to single-threaded.
 let mtDisabledForSession = false;
 
-/** Multi-threading needs SharedArrayBuffer, which requires COOP/COEP headers (see next.config.js). */
+// Mobile browsers — iOS Safari in particular — have much tighter WASM
+// memory ceilings than desktop, and the multi-threaded core reserves a
+// larger fixed memory footprint upfront (its SharedArrayBuffer-backed heap
+// can't grow as flexibly as the single-threaded core's). Confirmed in the
+// wild: a ~23MB video on mobile Safari aborted the mt core with "Aborted
+// (OOM)". Skipping mt on mobile avoids that failure mode instead of just
+// recovering from it after the fact.
+function isLikelyMobile(): boolean {
+	return typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent);
+}
+
+/** Multi-threading needs SharedArrayBuffer, which requires COOP/COEP headers (see next.config.js) — and isn't attempted on mobile (see isLikelyMobile). */
 export function canUseMultiThreaded(): boolean {
-	return typeof window !== 'undefined' && window.crossOriginIsolated === true;
+	return typeof window !== 'undefined' && window.crossOriginIsolated === true && !isLikelyMobile();
 }
 
 async function loadSingleThreaded(): Promise<LoadedEngine> {
@@ -58,10 +69,14 @@ async function loadMultiThreaded(): Promise<LoadedEngine> {
  * The multi-threaded core has a reproducible hang the moment libx264
  * actually starts encoding frames, at anything past a tiny resolution — it
  * gets through the ffmpeg banner and stream mapping and then never emits a
- * single "frame=" progress line. runCompression.ts guards every encode with
- * a stall watchdog and calls terminateMultiThreaded() + retries on the
- * single-threaded core when that happens, so a stalled job self-heals
- * instead of hanging the UI forever.
+ * single "frame=" progress line. It can also hit a hard OOM abort on memory-
+ * constrained devices (seen on mobile Safari with a real ~23MB video).
+ * runCompression.ts guards every encode with a stall watchdog and treats any
+ * multi-threaded failure — stall, crash, or otherwise — as reason to call
+ * terminateMultiThreaded() and retry on the single-threaded core, so a
+ * failure self-heals instead of surfacing straight to the user. Mobile skips
+ * the multi-threaded attempt entirely (see isLikelyMobile) rather than
+ * relying on that recovery every time.
  *
  * Callers are responsible for attaching/detaching their own
  * "log"/"progress" listeners around each operation (via ffmpeg.on/off) so
