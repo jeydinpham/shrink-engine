@@ -671,7 +671,15 @@ export function VideoCompressor() {
 				>
 					Jeydin Pham
 				</a>{' '}
-				&middot; runs entirely in your browser
+				&middot;{' '}
+				<a
+					href="https://github.com/jeydinpham/shrink-engine"
+					target="_blank"
+					rel="noopener noreferrer"
+					className="text-primary hover:underline underline-offset-4"
+				>
+					source on GitHub
+				</a>
 			</p>
 		</div>
 	);
