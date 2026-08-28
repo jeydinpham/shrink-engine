@@ -9,7 +9,7 @@ import { playCompletionSound } from '@/lib/sound';
 import { CompressOptions, EngineUsed, Resolution } from '@/lib/compress';
 import { compressVideo, CompressionPhase } from '@/lib/compressVideo';
 import { canUseMultiThreaded } from '@/lib/ffmpeg';
-import { canUseWebCodecs } from '@/lib/webCodecsCompress';
+import { canUseWebCodecs, probeWebCodecsDecode } from '@/lib/webCodecsCompress';
 
 type SizePreset = '10' | '20' | '50' | '100' | 'custom';
 
@@ -84,6 +84,10 @@ export function VideoCompressor() {
 	const [multiThreadCapable, setMultiThreadCapable] = useState(false);
 	const [webCodecsCapable, setWebCodecsCapable] = useState(false);
 	const [engineMode, setEngineMode] = useState<EngineUsed | 'unknown'>('unknown');
+	// Whether THIS file's video can actually be decoded via WebCodecs — a
+	// browser supporting the API at all doesn't mean it can decode any given
+	// file (codec/profile/resource issues only show up on real data).
+	const [fileDecodeSupport, setFileDecodeSupport] = useState<'checking' | 'supported' | 'unsupported' | null>(null);
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const autoDownloadedUrlRef = useRef<string | null>(null);
@@ -92,6 +96,24 @@ export function VideoCompressor() {
 		setMultiThreadCapable(canUseMultiThreaded());
 		setWebCodecsCapable(canUseWebCodecs());
 	}, []);
+
+	// Pre-flight check as soon as a file is picked, well before Compress is
+	// pressed — actually tries to decode the first frame instead of just
+	// trusting a static "is this codec supported" query.
+	useEffect(() => {
+		if (!file || !webCodecsCapable) {
+			setFileDecodeSupport(null);
+			return;
+		}
+		let cancelled = false;
+		setFileDecodeSupport('checking');
+		probeWebCodecsDecode(file).then((ok) => {
+			if (!cancelled) setFileDecodeSupport(ok ? 'supported' : 'unsupported');
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [file, webCodecsCapable]);
 
 	useEffect(() => {
 		if (!resultBlob) {
@@ -206,15 +228,22 @@ export function VideoCompressor() {
 				trimEndSec: trimEnabled ? Number(trimEnd) || 0 : 0,
 			};
 
-			const result = await compressVideo(file, options, {
-				onLog: appendLog,
-				onEngineReady: setEngineMode,
-				onPhase: (p) => {
-					setStage(STAGE_LABEL[p]);
-					setProgress(0);
+			const result = await compressVideo(
+				file,
+				options,
+				{
+					onLog: appendLog,
+					onEngineReady: setEngineMode,
+					onPhase: (p) => {
+						setStage(STAGE_LABEL[p]);
+						setProgress(0);
+					},
+					onProgress: setProgress,
 				},
-				onProgress: setProgress,
-			});
+				// Already confirmed this file can't be decoded via WebCodecs —
+				// skip the doomed attempt instead of failing into the fallback every time.
+				{ skipWebCodecs: fileDecodeSupport === 'unsupported' }
+			);
 
 			setResultBlob(result.blob);
 			setResultDuration(result.durationSeconds);
@@ -239,11 +268,15 @@ export function VideoCompressor() {
 		trimEnd,
 		playSound,
 		appendLog,
+		fileDecodeSupport,
 	]);
 
 	const showPercent = stage.startsWith('Encoding');
 	const reductionPct = file && resultBlob ? Math.max(0, Math.round((1 - resultBlob.size / file.size) * 100)) : null;
 	const showResult = phase === 'done' && !!resultBlob && !!resultUrl;
+	// Once the pre-flight probe has ruled WebCodecs out for this specific
+	// file, treat it the same as the browser not supporting it at all.
+	const effectiveWebCodecsCapable = webCodecsCapable && fileDecodeSupport !== 'unsupported';
 
 	return (
 		<div className="w-full max-w-5xl mx-auto flex-1 flex flex-col">
@@ -398,16 +431,18 @@ export function VideoCompressor() {
 											? 'Multi-threaded software (several CPU cores)'
 											: engineMode === 'single'
 												? 'Single-threaded software'
-												: webCodecsCapable
+												: fileDecodeSupport === 'checking'
+													? 'Checking whether this video works with hardware encoding…'
+													: effectiveWebCodecsCapable
 													? (
-														<Tooltip content="Used automatically when you compress, with an automatic fallback to software if it can’t hit your target size.">
-															WebCodecs hardware encoding available
+														<Tooltip content="Not guaranteed to work for every video — some files or resolutions fail to decode/encode this way, and it’ll fall back to software automatically if that happens or it can’t hit your target size.">
+															WebCodecs hardware encoding will be tried first
 														</Tooltip>
 													)
 													: multiThreadCapable
 														? (
-															<Tooltip content="Hardware encoding isn’t available in this browser. Loads a multi-core software (ffmpeg.wasm) encoder when you compress.">
-																Multi-threaded software available
+															<Tooltip content="Hardware encoding isn’t available in this browser. Tries a multi-core software (ffmpeg.wasm) encoder first, falling back automatically to single-core if it crashes or stalls.">
+																Multi-threaded software will be tried first
 															</Tooltip>
 														)
 														: (
@@ -537,10 +572,14 @@ export function VideoCompressor() {
 							<button
 								type="button"
 								onClick={handleCompress}
-								disabled={!file || !isValidTargetSize || isProcessing}
+								disabled={!file || !isValidTargetSize || isProcessing || fileDecodeSupport === 'checking'}
 								className="mt-3 w-full py-3 rounded-full bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-lg hover:opacity-90 transition-opacity"
 							>
-								{isProcessing ? `${stage}${showPercent ? ` ${Math.round(progress * 100)}%` : ''}` : 'Compress'}
+								{isProcessing
+									? `${stage}${showPercent ? ` ${Math.round(progress * 100)}%` : ''}`
+									: fileDecodeSupport === 'checking'
+										? 'Checking video…'
+										: 'Compress'}
 							</button>
 
 							{isProcessing && (

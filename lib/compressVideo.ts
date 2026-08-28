@@ -15,9 +15,10 @@ export type { CompressionCallbacks, CompressionPhase } from './runCompression';
 export async function compressVideo(
 	file: File,
 	options: CompressOptions,
-	callbacks: CompressionCallbacks = {}
+	callbacks: CompressionCallbacks = {},
+	opts: { skipWebCodecs?: boolean } = {}
 ): Promise<CompressionResult> {
-	if (canUseWebCodecs()) {
+	if (!opts.skipWebCodecs && canUseWebCodecs()) {
 		try {
 			callbacks.onPhase?.('encoding');
 			const result = await compressWithWebCodecs(file, options, { onProgress: callbacks.onProgress, onLog: callbacks.onLog });

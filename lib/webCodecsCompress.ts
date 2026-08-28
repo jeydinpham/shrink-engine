@@ -17,6 +17,44 @@ export function canUseWebCodecs(): boolean {
 	return typeof window !== 'undefined' && typeof (window as unknown as { VideoEncoder?: unknown }).VideoEncoder !== 'undefined';
 }
 
+const PROBE_TIMEOUT_MS = 8_000;
+
+/**
+ * Actually attempts to decode the video's first frame via WebCodecs, rather
+ * than just checking whether the browser's API exists. Encoder-capability
+ * checks say nothing about whether THIS file's source codec/bitstream can
+ * be decoded — `isConfigSupported()`-style static checks can say yes and
+ * still fail on real data (confirmed in the wild: a 4K vertical HEVC clip
+ * failed with "Decoding task did not complete" despite nothing flagging it
+ * in advance). This isn't a 100% guarantee either — a failure deeper in a
+ * long file (e.g. hardware decoder resource exhaustion) can't be predicted
+ * from frame 1 — but it catches the common case before the user ever hits
+ * Compress instead of only discovering it mid-job.
+ */
+export async function probeWebCodecsDecode(file: File): Promise<boolean> {
+	if (!canUseWebCodecs()) return false;
+
+	const { ALL_FORMATS, BlobSource, Input, VideoSampleSink } = await import('mediabunny');
+	const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(file) });
+
+	try {
+		const videoTrack = await input.getPrimaryVideoTrack();
+		if (!videoTrack) return false;
+
+		const sink = new VideoSampleSink(videoTrack);
+		const sample = await Promise.race([
+			sink.getSample(0),
+			new Promise<never>((_, reject) => setTimeout(() => reject(new Error('decode probe timed out')), PROBE_TIMEOUT_MS)),
+		]);
+		sample?.close();
+		return sample != null;
+	} catch {
+		return false;
+	} finally {
+		input.dispose();
+	}
+}
+
 // Hardware encoders haven't shown ffmpeg.wasm's pthread-hang failure mode in
 // testing, but this is a cheap safety net in case a specific browser/GPU
 // combination stalls: falls back to the ffmpeg.wasm pipeline just like a
