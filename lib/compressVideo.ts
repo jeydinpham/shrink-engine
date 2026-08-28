@@ -21,8 +21,11 @@ export async function compressVideo(
 	if (!opts.skipWebCodecs && canUseWebCodecs()) {
 		try {
 			callbacks.onPhase?.('encoding');
-			const result = await compressWithWebCodecs(file, options, { onProgress: callbacks.onProgress, onLog: callbacks.onLog });
+			// Reported before the attempt (not after success) so the UI can show
+			// WebCodecs as the active engine while it's actually running, not
+			// just retroactively once it's already done.
 			callbacks.onEngineReady?.('webcodecs');
+			const result = await compressWithWebCodecs(file, options, { onProgress: callbacks.onProgress, onLog: callbacks.onLog });
 			return result;
 		} catch (err) {
 			callbacks.onLog?.(

@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Switch } from './Switch';
 import { EngineStatus } from './EngineStatus';
 import { Modal } from './Modal';
-import { Tooltip } from './Tooltip';
 import { formatBytes, formatDuration } from '@/lib/format';
 import { looksLikeVideoFile, VIDEO_ACCEPT } from '@/lib/fileTypes';
 import { playCompletionSound } from '@/lib/sound';
@@ -28,6 +27,32 @@ const STAGE_LABEL: Record<CompressionPhase, string> = {
 	pass1: 'Encoding (pass 1 of 2)…',
 	pass2: 'Encoding (pass 2 of 2)…',
 };
+
+export type EngineChipState = 'unavailable' | 'neutral' | 'checking' | 'planned' | 'active' | 'done' | 'fellback';
+
+export interface EngineChip {
+	id: EngineUsed;
+	label: string;
+	tooltip: string;
+	state: EngineChipState;
+}
+
+const ENGINE_INFO: Record<EngineUsed, { label: string; tooltip: string }> = {
+	webcodecs: {
+		label: 'Hardware',
+		tooltip: "Uses your device's dedicated video encoder via the WebCodecs API — the fastest option, when it's available and can handle this file.",
+	},
+	multi: {
+		label: 'Multi-core',
+		tooltip: 'Software encoding (ffmpeg.wasm) spread across multiple CPU cores.',
+	},
+	single: {
+		label: 'Single-core',
+		tooltip: 'Software encoding (ffmpeg.wasm) on a single CPU core — the universal fallback. Works everywhere, but slowest.',
+	},
+};
+
+const ENGINE_ORDER: EngineUsed[] = ['webcodecs', 'multi', 'single'];
 
 function UploadIcon({ className }: { className?: string }) {
 	return (
@@ -84,6 +109,11 @@ export function VideoCompressor() {
 	const [multiThreadCapable, setMultiThreadCapable] = useState(false);
 	const [webCodecsCapable, setWebCodecsCapable] = useState(false);
 	const [engineMode, setEngineMode] = useState<EngineUsed | 'unknown'>('unknown');
+	// Every engine actually attempted this run, in order — lets the engine
+	// ladder show the fallback chain animating in real time (e.g. WebCodecs →
+	// multi-threaded → single-threaded) instead of only ever revealing the
+	// final choice after the fact.
+	const [engineHistory, setEngineHistory] = useState<EngineUsed[]>([]);
 	// Whether THIS file's video can actually be decoded via WebCodecs — a
 	// browser supporting the API at all doesn't mean it can decode any given
 	// file (codec/profile/resource issues only show up on real data).
@@ -104,6 +134,11 @@ export function VideoCompressor() {
 
 	const appendLog = useCallback((message: string) => {
 		setLogLines((prev) => (prev.length > 200 ? [...prev.slice(-200), message] : [...prev, message]));
+	}, []);
+
+	const handleEngineReady = useCallback((engine: EngineUsed) => {
+		setEngineMode(engine);
+		setEngineHistory((prev) => (prev[prev.length - 1] === engine ? prev : [...prev, engine]));
 	}, []);
 
 	// Pre-flight check as soon as a file is picked, well before Compress is
@@ -160,6 +195,8 @@ export function VideoCompressor() {
 		setPhase('idle');
 		setStage('Not loaded');
 		setProgress(0);
+		setEngineMode('unknown');
+		setEngineHistory([]);
 	}, []);
 
 	const dismissResult = useCallback(() => {
@@ -230,6 +267,8 @@ export function VideoCompressor() {
 		setLogLines(webCodecsSkipReason ? [webCodecsSkipReason] : []);
 		setPhase('working');
 		setStage('Starting…');
+		setEngineMode('unknown');
+		setEngineHistory([]);
 		autoDownloadedUrlRef.current = null;
 
 		try {
@@ -247,7 +286,7 @@ export function VideoCompressor() {
 				options,
 				{
 					onLog: appendLog,
-					onEngineReady: setEngineMode,
+					onEngineReady: handleEngineReady,
 					onPhase: (p) => {
 						setStage(STAGE_LABEL[p]);
 						setProgress(0);
@@ -282,6 +321,7 @@ export function VideoCompressor() {
 		trimEnd,
 		playSound,
 		appendLog,
+		handleEngineReady,
 		fileDecodeSupport,
 		webCodecsSkipReason,
 	]);
@@ -292,6 +332,48 @@ export function VideoCompressor() {
 	// Once the pre-flight probe has ruled WebCodecs out for this specific
 	// file, treat it the same as the browser not supporting it at all.
 	const effectiveWebCodecsCapable = webCodecsCapable && fileDecodeSupport !== 'unsupported';
+
+	// The engine ladder shown in Engine Status: which engines exist, which
+	// one is planned/active/done, and which ones were tried and fell back
+	// this run — computed fresh every render so it animates in step with
+	// engineHistory as attempts actually happen, not just the final result.
+	const plannedEngine: EngineUsed = effectiveWebCodecsCapable ? 'webcodecs' : multiThreadCapable ? 'multi' : 'single';
+	const engineChips: EngineChip[] = ENGINE_ORDER.map((id) => {
+		const info = ENGINE_INFO[id];
+		const historyIndex = engineHistory.indexOf(id);
+		const isMostRecent = historyIndex !== -1 && historyIndex === engineHistory.length - 1;
+		const unavailable =
+			(id === 'webcodecs' && (!webCodecsCapable || (!!file && fileDecodeSupport === 'unsupported'))) ||
+			(id === 'multi' && !multiThreadCapable);
+
+		let state: EngineChipState;
+		let tooltip = info.tooltip;
+
+		if (historyIndex !== -1) {
+			if (isMostRecent && phase === 'working') state = 'active';
+			else if (isMostRecent && phase === 'done') state = 'done';
+			else if (isMostRecent) state = 'neutral';
+			else {
+				state = 'fellback';
+				tooltip += ' Fell back this run — the job switched to another engine partway through.';
+			}
+		} else if (unavailable) {
+			state = 'unavailable';
+			tooltip +=
+				id === 'webcodecs' && file && fileDecodeSupport === 'unsupported'
+					? " This file's video couldn't be decoded this way, so it's sitting this run out."
+					: ' Not available in this browser or device.';
+		} else if (id === 'webcodecs' && !!file && fileDecodeSupport === 'checking') {
+			state = 'checking';
+			tooltip += ' Checking whether this file can be decoded this way…';
+		} else if (phase !== 'working' && phase !== 'done' && id === plannedEngine) {
+			state = 'planned';
+		} else {
+			state = 'neutral';
+		}
+
+		return { id, label: info.label, tooltip, state };
+	});
 
 	return (
 		<div className="w-full max-w-5xl mx-auto flex-1 flex flex-col">
@@ -335,7 +417,7 @@ export function VideoCompressor() {
 								}`}
 							>
 								{showResult ? (
-									<>
+									<div key="result" className="animate-fade-in">
 										<CheckCircleIcon className="h-7 w-7 mx-auto mb-2 text-secondary-foreground" />
 										{reductionPct !== null && (
 											<p className="font-display text-2xl font-semibold text-secondary-foreground">{reductionPct}% smaller</p>
@@ -365,15 +447,15 @@ export function VideoCompressor() {
 												Compress another
 											</button>
 										</div>
-									</>
+									</div>
 								) : (
 									<>
 										{file ? (
-											<>
+											<div key="file" className="animate-fade-in">
 												<CheckCircleIcon className="h-7 w-7 mx-auto mb-2 text-secondary-foreground" />
 												<p className="font-medium break-all text-foreground">{file.name}</p>
 												<p className="text-sm text-muted-foreground">{formatBytes(file.size)}</p>
-											</>
+											</div>
 										) : (
 											<>
 												<UploadIcon className="h-7 w-7 mx-auto mb-2 text-muted-foreground" />
@@ -439,33 +521,7 @@ export function VideoCompressor() {
 								statusText={
 									phase === 'working' ? stage : phase === 'done' ? 'Ready' : phase === 'error' ? 'Idle' : 'Not loaded'
 								}
-								engineText={
-									engineMode === 'webcodecs'
-										? 'Hardware-accelerated (WebCodecs)'
-										: engineMode === 'multi'
-											? 'Multi-threaded software (several CPU cores)'
-											: engineMode === 'single'
-												? 'Single-threaded software'
-												: fileDecodeSupport === 'checking'
-													? 'Checking whether this video works with hardware encoding…'
-													: effectiveWebCodecsCapable
-													? (
-														<Tooltip content="Not guaranteed to work for every video — some files or resolutions fail to decode/encode this way, and it’ll fall back to software automatically if that happens or it can’t hit your target size.">
-															WebCodecs hardware encoding will be tried first
-														</Tooltip>
-													)
-													: multiThreadCapable
-														? (
-															<Tooltip content="Hardware encoding isn’t available in this browser. Tries a multi-core software (ffmpeg.wasm) encoder first, falling back automatically to single-core if it crashes or stalls.">
-																Multi-threaded software will be tried first
-															</Tooltip>
-														)
-														: (
-															<Tooltip content="Hardware encoding and multi-core both aren’t available here. Falls back to a single-core software (ffmpeg.wasm) encoder when you compress — still works, just slower.">
-																Single-threaded software available
-															</Tooltip>
-														)
-								}
+								chips={engineChips}
 								logLines={logLines}
 							/>
 						</div>
@@ -483,9 +539,9 @@ export function VideoCompressor() {
 										key={preset.value}
 										type="button"
 										onClick={() => setSizePreset(preset.value)}
-										className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+										className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
 											sizePreset === preset.value
-												? 'bg-primary text-primary-foreground'
+												? 'bg-primary text-primary-foreground scale-105'
 												: 'bg-muted text-foreground hover:bg-accent'
 										}`}
 									>
@@ -495,8 +551,10 @@ export function VideoCompressor() {
 								{/* Custom is an inline pill-shaped input, not a toggle that reveals a
 								    separate field below — typing (or focusing) it just selects it. */}
 								<label
-									className={`flex items-center gap-1 rounded-full pl-4 pr-3 transition-colors ${
-										sizePreset === 'custom' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground hover:bg-accent'
+									className={`flex items-center gap-1 rounded-full pl-4 pr-3 transition-all duration-200 ${
+										sizePreset === 'custom'
+											? 'bg-primary text-primary-foreground scale-105'
+											: 'bg-muted text-foreground hover:bg-accent'
 									}`}
 								>
 									<input
@@ -587,14 +645,16 @@ export function VideoCompressor() {
 							<button
 								type="button"
 								onClick={handleCompress}
-								disabled={!file || !isValidTargetSize || isProcessing || fileDecodeSupport === 'checking'}
+								disabled={!file || !isValidTargetSize || isProcessing || fileDecodeSupport === 'checking' || phase === 'done'}
 								className="mt-3 w-full py-3 rounded-full bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-lg hover:opacity-90 transition-opacity"
 							>
 								{isProcessing
 									? `${stage}${showPercent ? ` ${Math.round(progress * 100)}%` : ''}`
-									: fileDecodeSupport === 'checking'
-										? 'Checking video…'
-										: 'Compress'}
+									: phase === 'done'
+										? 'Compressed ✓'
+										: fileDecodeSupport === 'checking'
+											? 'Checking video…'
+											: 'Compress'}
 							</button>
 
 							{isProcessing && (
@@ -606,7 +666,7 @@ export function VideoCompressor() {
 								</div>
 							)}
 
-							{errorMessage && <p className="mt-4 text-sm text-red-400 text-center">{errorMessage}</p>}
+							{errorMessage && <p className="mt-4 text-sm text-red-400 text-center animate-fade-in">{errorMessage}</p>}
 						</div>
 					</div>
 				</div>

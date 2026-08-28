@@ -8,32 +8,40 @@ module.exports = {
 	],
 	theme: {
 		extend: {
+			// Each var below stores bare color components (no wrapping function) and
+			// gets wrapped here with the matching color function plus Tailwind's
+			// special <alpha-value> placeholder — the documented pattern that lets
+			// opacity modifiers (bg-primary/70, ring-primary/25, etc.) actually work
+			// on custom theme colors. Without this, `var(--x)` resolves to a fixed
+			// opaque color and every `/NN` modifier on it silently falls back to
+			// fully transparent (or, for `ring-*`, Tailwind's default blue) instead
+			// of blending in any opacity at all.
 			colors: {
-				background: "var(--background)",
-				foreground: "var(--foreground)",
+				background: "oklch(var(--background) / <alpha-value>)",
+				foreground: "oklch(var(--foreground) / <alpha-value>)",
 				card: {
-					DEFAULT: "var(--card)",
-					foreground: "var(--card-foreground)",
+					DEFAULT: "oklch(var(--card) / <alpha-value>)",
+					foreground: "oklch(var(--card-foreground) / <alpha-value>)",
 				},
 				primary: {
-					DEFAULT: "var(--primary)",
-					foreground: "var(--primary-foreground)",
+					DEFAULT: "rgb(var(--primary) / <alpha-value>)",
+					foreground: "rgb(var(--primary-foreground) / <alpha-value>)",
 				},
 				secondary: {
-					DEFAULT: "var(--secondary)",
-					foreground: "var(--secondary-foreground)",
+					DEFAULT: "oklch(var(--secondary) / <alpha-value>)",
+					foreground: "oklch(var(--secondary-foreground) / <alpha-value>)",
 				},
 				muted: {
-					DEFAULT: "var(--muted)",
-					foreground: "var(--muted-foreground)",
+					DEFAULT: "oklch(var(--muted) / <alpha-value>)",
+					foreground: "oklch(var(--muted-foreground) / <alpha-value>)",
 				},
 				accent: {
-					DEFAULT: "var(--accent)",
-					foreground: "var(--accent-foreground)",
+					DEFAULT: "oklch(var(--accent) / <alpha-value>)",
+					foreground: "oklch(var(--accent-foreground) / <alpha-value>)",
 				},
-				border: "var(--border)",
-				input: "var(--input)",
-				ring: "var(--ring)",
+				border: "oklch(var(--border) / <alpha-value>)",
+				input: "oklch(var(--input) / <alpha-value>)",
+				ring: "rgb(var(--ring) / <alpha-value>)",
 			},
 			fontFamily: {
 				sans: ["var(--font-geist-sans)", "ui-sans-serif", "system-ui", "sans-serif"],

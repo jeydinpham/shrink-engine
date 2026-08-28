@@ -26,30 +26,83 @@
  * background, peach/amber primary, sage-green secondary) so this tool reads
  * as part of the same site.
  */
+/*
+ * Colors below are stored as bare components (no oklch()/rgb() wrapper) so
+ * tailwind.config.ts can wrap each one with its own color function plus the
+ * `<alpha-value>` placeholder — the pattern Tailwind needs to support opacity
+ * modifiers (bg-primary/70, etc.) on these custom theme colors. Anywhere
+ * these vars are used directly in this file (not via a Tailwind class), they
+ * need the same oklch(...)/rgb(...) wrapper applied explicitly.
+ */
 :root {
 	--font-geist-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
 	--font-geist-mono: 'Geist Mono', ui-monospace, monospace;
-	--background: oklch(16.5% .018 50);
-	--foreground: oklch(94.6% .011 70);
-	--card: oklch(24% .021 50);
-	--card-foreground: oklch(94.6% .011 70);
-	--primary: #fdba74;
-	--primary-foreground: #3f1f09;
-	--secondary: oklch(29.5% .045 124);
-	--secondary-foreground: oklch(91.5% .075 124);
-	--muted: oklch(28% .021 50);
-	--muted-foreground: oklch(75% .018 60);
-	--accent: oklch(32% .023 50);
-	--accent-foreground: oklch(94.6% .011 70);
-	--border: oklch(34% .025 50);
-	--input: oklch(41% .02 55);
-	--ring: #fdba74;
+	--background: 16.5% .018 50;
+	--foreground: 94.6% .011 70;
+	--card: 24% .021 50;
+	--card-foreground: 94.6% .011 70;
+	--primary: 253 186 116; /* was #fdba74 */
+	--primary-foreground: 63 31 9; /* was #3f1f09 */
+	--secondary: 29.5% .045 124;
+	--secondary-foreground: 91.5% .075 124;
+	--muted: 28% .021 50;
+	--muted-foreground: 75% .018 60;
+	--accent: 32% .023 50;
+	--accent-foreground: 94.6% .011 70;
+	--border: 34% .025 50;
+	--input: 41% .02 55;
+	--ring: 253 186 116; /* was #fdba74, same as --primary */
 	--radius: 0.625rem;
 }
 
+/* Small motion vocabulary used throughout the compressor UI so stateful
+   changes (status text, engine ladder, new log lines) read as fluid
+   transitions instead of hard cuts. */
+@keyframes pulse-glow {
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 color-mix(in oklab, rgb(var(--primary)) 55%, transparent);
+	}
+	50% {
+		box-shadow: 0 0 0 5px color-mix(in oklab, rgb(var(--primary)) 0%, transparent);
+	}
+}
+
+@keyframes fade-slide-in {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.animate-pulse-glow {
+	animation: pulse-glow 1.6s ease-in-out infinite;
+}
+
+.animate-log-in {
+	animation: fade-slide-in 220ms ease-out;
+}
+
+.animate-fade-in {
+	animation: fade-in 200ms ease-out;
+}
+
 body {
-	background-color: var(--background);
-	color: var(--foreground);
+	background-color: oklch(var(--background));
+	color: oklch(var(--foreground));
 	min-height: 100vh;
 	/* Signature texture from jeydinpham.com: a faint grid plus two soft
 	   primary-colored glows tucked into opposite corners. */
@@ -58,18 +111,18 @@ body {
 		repeating-linear-gradient(90deg, #a991700d 0, #a991700d 1px, transparent 1px, transparent 28px),
 		radial-gradient(
 			circle at 10% 12%,
-			color-mix(in oklab, var(--primary) 14%, transparent) 0,
-			color-mix(in oklab, var(--primary) 8%, transparent) 18%,
-			color-mix(in oklab, var(--primary) 3.6%, transparent) 34%,
-			color-mix(in oklab, var(--primary) 1.4%, transparent) 44%,
+			color-mix(in oklab, rgb(var(--primary)) 14%, transparent) 0,
+			color-mix(in oklab, rgb(var(--primary)) 8%, transparent) 18%,
+			color-mix(in oklab, rgb(var(--primary)) 3.6%, transparent) 34%,
+			color-mix(in oklab, rgb(var(--primary)) 1.4%, transparent) 44%,
 			transparent 52%
 		),
 		radial-gradient(
 			circle at 90% 84%,
-			color-mix(in oklab, var(--primary) 9%, transparent) 0,
-			color-mix(in oklab, var(--primary) 5.4%, transparent) 20%,
-			color-mix(in oklab, var(--primary) 2.6%, transparent) 36%,
-			color-mix(in oklab, var(--primary) 1.1%, transparent) 46%,
+			color-mix(in oklab, rgb(var(--primary)) 9%, transparent) 0,
+			color-mix(in oklab, rgb(var(--primary)) 5.4%, transparent) 20%,
+			color-mix(in oklab, rgb(var(--primary)) 2.6%, transparent) 36%,
+			color-mix(in oklab, rgb(var(--primary)) 1.1%, transparent) 46%,
 			transparent 54%
 		);
 	background-attachment: fixed;
