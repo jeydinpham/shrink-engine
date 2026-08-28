@@ -71,7 +71,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
 				aria-modal="true"
 				aria-label={title}
 				onClick={(e) => e.stopPropagation()}
-				className={`relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl p-6 transition-all duration-200 ${
+				className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl p-8 transition-all duration-200 ${
 					visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
 				}`}
 			>

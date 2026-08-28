@@ -605,22 +605,57 @@ export function VideoCompressor() {
 				<div>
 					<p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground mb-1.5">Two engines</p>
 					<p>
-						When your browser supports it, compression runs through <strong className="text-foreground">WebCodecs</strong>,
-						a browser API that taps into your device&rsquo;s actual hardware video encoder &mdash; the same kind of speed
-						you&rsquo;d get from a native app.
+						When your browser supports it, compression runs through{' '}
+						<a
+							href="https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="font-medium text-primary hover:underline underline-offset-4"
+						>
+							WebCodecs
+						</a>
+						, a browser API that taps into your device&rsquo;s actual hardware video encoder &mdash; dedicated silicon
+						built for exactly this, giving you the same kind of speed you&rsquo;d get from a native app. Getting there
+						relies on{' '}
+						<a
+							href="https://github.com/Vanilagy/mediabunny"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="font-medium text-primary hover:underline underline-offset-4"
+						>
+							mediabunny
+						</a>{' '}
+						to handle the demuxing/muxing around it.
 					</p>
 					<p className="mt-2">
-						If that&rsquo;s not available, it falls back to a WebAssembly build of{' '}
-						<strong className="text-foreground">ffmpeg</strong> running entirely in JavaScript. It&rsquo;s slower since
-						there&rsquo;s no hardware to lean on, but it works in almost any browser.
+						If that&rsquo;s not available (or it can&rsquo;t decode/encode this particular video), it falls back to a
+						WebAssembly build of{' '}
+						<a
+							href="https://ffmpeg.org/"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="font-medium text-primary hover:underline underline-offset-4"
+						>
+							ffmpeg
+						</a>{' '}
+						doing all the video math in JavaScript on your CPU instead. It works in almost any browser, but with no
+						dedicated hardware to lean on, it&rsquo;s a lot slower &mdash; think several times to tens of times slower,
+						depending on the video.
 					</p>
 				</div>
 				<div>
-					<p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground mb-1.5">Hitting your target size</p>
+					<p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground mb-1.5">Speed depends on your device</p>
 					<p>
-						It works out how many bits per second the video can spend, for its whole length, to land under the size you
-						asked for &mdash; then encodes at that bitrate. So you get a file just under your target, not a fixed quality
-						level.
+						Since software encoding runs on your CPU with no hardware to lean on, it scales directly with how strong
+						your device is &mdash; a fast desktop chews through a video in seconds, while an older or weaker machine
+						can take noticeably longer.
+					</p>
+					<p className="mt-2">
+						Mobile is the toughest case. Hardware encoding sessions are more resource-constrained on phones, so
+						there&rsquo;s a higher chance it falls back to software &mdash; and that software fallback runs
+						single-core on mobile on purpose, since the faster multi-core version has crashed on real phones during
+						testing. Desktops get the full multi-core fallback <em>and</em> more reliable hardware access, so for the
+						fastest, most consistent results, use this on a desktop or laptop rather than your phone.
 					</p>
 				</div>
 			</Modal>
