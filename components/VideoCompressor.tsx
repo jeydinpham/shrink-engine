@@ -57,7 +57,7 @@ export function VideoCompressor() {
 	const [urlValue, setUrlValue] = useState('');
 	const [urlLoading, setUrlLoading] = useState(false);
 
-	const [sizePreset, setSizePreset] = useState<SizePreset>('10');
+	const [sizePreset, setSizePreset] = useState<SizePreset>('20');
 	const [customSizeMB, setCustomSizeMB] = useState('');
 
 	const [resolution, setResolution] = useState<Resolution>('original');
