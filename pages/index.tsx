@@ -11,7 +11,7 @@ export default function Home() {
           name="description"
           content="Perfectly compressed files entirely in your browser. Get around Discord's file size limit and share your videos with ease!"
         />
-        <meta name="theme-color" content="#150c07" />
+        <meta name="theme-color" content="#34241B" />
         <link rel="icon" href="/favicon.png" />
       </Head>
 
