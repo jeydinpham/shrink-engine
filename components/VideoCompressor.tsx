@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Switch } from './Switch';
 import { EngineStatus } from './EngineStatus';
+import { Modal } from './Modal';
 import { formatBytes, formatDuration } from '@/lib/format';
 import { looksLikeVideoFile, VIDEO_ACCEPT } from '@/lib/fileTypes';
 import { playCompletionSound } from '@/lib/sound';
@@ -50,6 +51,7 @@ function CheckCircleIcon({ className }: { className?: string }) {
 export function VideoCompressor() {
 	const [file, setFile] = useState<File | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
+	const [howItWorksOpen, setHowItWorksOpen] = useState(false);
 
 	const [showUrlInput, setShowUrlInput] = useState(false);
 	const [urlValue, setUrlValue] = useState('');
@@ -253,6 +255,13 @@ export function VideoCompressor() {
 					Got a video that’s too big to send? Drop it in, tell it how small it needs to be, and it’ll shrink itself
 					right here in your browser &mdash; nothing gets uploaded anywhere.
 				</p>
+				<button
+					type="button"
+					onClick={() => setHowItWorksOpen(true)}
+					className="mt-2 text-sm text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary"
+				>
+					How does this work?
+				</button>
 			</div>
 
 			{/* One unified panel: video + engine status on the left, settings on the right,
@@ -535,6 +544,34 @@ export function VideoCompressor() {
 					</div>
 				</div>
 			</div>
+
+			<Modal open={howItWorksOpen} onClose={() => setHowItWorksOpen(false)} title="How this works">
+				<p>
+					Everything happens right here in your browser &mdash; your video is never uploaded to a server. There&rsquo;s
+					nothing to wait on and nothing to trust with your files.
+				</p>
+				<div>
+					<p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground mb-1.5">Two engines</p>
+					<p>
+						When your browser supports it, compression runs through <strong className="text-foreground">WebCodecs</strong>,
+						a browser API that taps into your device&rsquo;s actual hardware video encoder &mdash; the same kind of speed
+						you&rsquo;d get from a native app.
+					</p>
+					<p className="mt-2">
+						If that&rsquo;s not available, it falls back to a WebAssembly build of{' '}
+						<strong className="text-foreground">ffmpeg</strong> running entirely in JavaScript. It&rsquo;s slower since
+						there&rsquo;s no hardware to lean on, but it works in almost any browser.
+					</p>
+				</div>
+				<div>
+					<p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground mb-1.5">Hitting your target size</p>
+					<p>
+						It works out how many bits per second the video can spend, for its whole length, to land under the size you
+						asked for &mdash; then encodes at that bitrate. So you get a file just under your target, not a fixed quality
+						level.
+					</p>
+				</div>
+			</Modal>
 
 			{/* Footer */}
 			<p className="mt-auto pt-6 text-center text-xs font-mono text-muted-foreground">
