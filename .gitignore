@@ -20,6 +20,10 @@
 .DS_Store
 *.pem
 
+# generated at install time (see scripts/copy-ffmpeg-core.js)
+/public/ffmpeg/
+/public/ffmpeg-mt/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

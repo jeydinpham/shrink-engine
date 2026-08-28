@@ -1,16 +1,17 @@
 # Video Compressor
-A web app that compresses an MP4 file to a certain megabyte size
+A web app that compresses a video to a target file size (8MB, 25MB, 50MB, 100MB, or a custom size). All compression runs client-side via [ffmpeg.wasm](https://ffmpegwasm.netlify.app/) — no server, no upload, the video never leaves your browser.
 
 <!-- ## Preview
 ![](./public/assets/preview.png) -->
 
-<!-- ## Tech Stack
+## Tech Stack
 ### Front-end:
 - [React.js](https://react.dev/)
 - [Next.js](https://nextjs.org/)
 - [Tailwind CSS](https://tailwindcss.com/)
+- [ffmpeg.wasm](https://ffmpegwasm.netlify.app/) for in-browser video transcoding
 ### Back-end:
-- There's no backend 💀 -->
+- There's no backend 💀
 
 ## Local Development
 ### 1. Clone the project
