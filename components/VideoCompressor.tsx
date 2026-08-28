@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Disclosure } from './Disclosure';
+import { Switch } from './Switch';
 import { formatBytes, formatDuration } from '@/lib/format';
 import { looksLikeVideoFile, VIDEO_ACCEPT } from '@/lib/fileTypes';
 import { playCompletionSound } from '@/lib/sound';
@@ -25,6 +26,26 @@ const STAGE_LABEL: Record<CompressionPhase, string> = {
 	pass1: 'Encoding (pass 1 of 2)…',
 	pass2: 'Encoding (pass 2 of 2)…',
 };
+
+function UploadIcon({ className }: { className?: string }) {
+	return (
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className={className}>
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"
+			/>
+		</svg>
+	);
+}
+
+function CheckCircleIcon({ className }: { className?: string }) {
+	return (
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className={className}>
+			<path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+		</svg>
+	);
+}
 
 export function VideoCompressor() {
 	const [file, setFile] = useState<File | null>(null);
@@ -218,319 +239,320 @@ export function VideoCompressor() {
 	]);
 
 	const showPercent = stage.startsWith('Encoding');
+	const reductionPct = file && resultBlob ? Math.max(0, Math.round((1 - resultBlob.size / file.size) * 100)) : null;
 
 	return (
-		<div className="w-full max-w-2xl mx-auto">
-			<div className="text-center mb-8">
-				<h1 className="text-4xl md:text-5xl font-extrabold mb-3">
-					video<span className="text-green-400">compressor</span>
+		<div className="w-full max-w-5xl mx-auto">
+			{/* Hero */}
+			<div className="mb-10 max-w-2xl">
+				<p className="font-mono text-xs uppercase tracking-[0.2em] text-primary mb-3">a tool by jeydin</p>
+				<h1 className="font-display text-4xl md:text-6xl font-semibold tracking-tight text-foreground mb-4">
+					shrink your videos.
 				</h1>
-				<p className="text-gray-400">Shrink a video to a target file size, entirely in your browser.</p>
+				<p className="text-muted-foreground">
+					Drop in a video, pick a target size, and it compresses right in your browser &mdash; no upload, no server.
+				</p>
 			</div>
 
-			<div
-				onDragOver={(e) => {
-					e.preventDefault();
-					setIsDragging(true);
-				}}
-				onDragLeave={() => setIsDragging(false)}
-				onDrop={onDrop}
-				className={`rounded-xl border-2 border-dashed p-6 md:p-8 transition-colors ${
-					isDragging ? 'border-green-400 bg-green-950/20' : 'border-green-700/70'
-				}`}
-			>
-				<div className="text-center mb-6">
-					{file ? (
-						<>
-							<p className="font-medium break-all">{file.name}</p>
-							<p className="text-sm text-gray-400">{formatBytes(file.size)}</p>
-						</>
-					) : (
-						<>
-							<p className="text-lg">Drag &amp; Drop Here</p>
-							<p className="text-gray-400">or click the browse button.</p>
-						</>
-					)}
-				</div>
+			<div className="grid gap-6 md:grid-cols-[1.4fr_1fr] md:grid-rows-[auto_auto] items-start">
+				{/* 01 — your video */}
+				<div className="md:col-start-1 md:row-start-1 rounded-2xl border border-border bg-card shadow-xl shadow-black/20 p-6 md:p-8">
+					<p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground mb-5">01 — your video</p>
 
-				<div className="flex items-center justify-center gap-4 mb-6 flex-wrap">
-					<input
-						ref={fileInputRef}
-						type="file"
-						accept={VIDEO_ACCEPT}
-						className="hidden"
-						onChange={(e) => {
-							const picked = e.target.files?.[0];
-							if (picked) handleFile(picked);
-							e.target.value = '';
+					<div
+						onDragOver={(e) => {
+							e.preventDefault();
+							setIsDragging(true);
 						}}
-					/>
-					<button
-						type="button"
-						onClick={() => fileInputRef.current?.click()}
-						className="px-4 py-2 rounded-md bg-gray-700 hover:bg-gray-600 font-medium"
+						onDragLeave={() => setIsDragging(false)}
+						onDrop={onDrop}
+						className={`rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
+							isDragging ? 'border-primary bg-primary/5' : 'border-border'
+						}`}
 					>
-						Browse…
-					</button>
-					<button
-						type="button"
-						onClick={() => setShowUrlInput((v) => !v)}
-						className="text-green-400 underline underline-offset-2 hover:text-green-300"
-					>
-						or enter URL
-					</button>
-				</div>
+						{file ? (
+							<>
+								<CheckCircleIcon className="h-8 w-8 mx-auto mb-3 text-secondary-foreground" />
+								<p className="font-medium break-all text-foreground">{file.name}</p>
+								<p className="text-sm text-muted-foreground">{formatBytes(file.size)}</p>
+							</>
+						) : (
+							<>
+								<UploadIcon className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+								<p className="font-medium text-foreground">Drag &amp; drop a video</p>
+								<p className="text-sm text-muted-foreground">or choose a file below</p>
+							</>
+						)}
 
-				{showUrlInput && (
-					<div className="flex gap-2 mb-6">
-						<input
-							type="url"
-							value={urlValue}
-							onChange={(e) => setUrlValue(e.target.value)}
-							placeholder="https://example.com/video.mp4"
-							className="flex-1 min-w-0 rounded-md bg-gray-900 border border-gray-700 px-3 py-2 text-sm focus:outline-none focus:border-green-500"
-						/>
-						<button
-							type="button"
-							onClick={onLoadUrl}
-							disabled={urlLoading || !urlValue.trim()}
-							className="px-3 py-2 rounded-md bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-sm font-medium"
-						>
-							{urlLoading ? 'Loading…' : 'Load'}
-						</button>
-					</div>
-				)}
-
-				<div className="flex items-center justify-center gap-x-6 gap-y-2 flex-wrap mb-3">
-					{PRESETS.map((preset) => (
-						<label key={preset.value} className="flex items-center gap-2 cursor-pointer">
+						<div className="mt-5 flex items-center justify-center gap-3 flex-wrap">
 							<input
-								type="radio"
-								name="size-preset"
-								checked={sizePreset === preset.value}
-								onChange={() => setSizePreset(preset.value)}
-								className="accent-green-500"
+								ref={fileInputRef}
+								type="file"
+								accept={VIDEO_ACCEPT}
+								className="hidden"
+								onChange={(e) => {
+									const picked = e.target.files?.[0];
+									if (picked) handleFile(picked);
+									e.target.value = '';
+								}}
 							/>
-							{preset.label}
-						</label>
-					))}
-				</div>
-				<div className="flex items-center justify-center gap-2 mb-6">
-					<label className="flex items-center gap-2 cursor-pointer">
-						<input
-							type="radio"
-							name="size-preset"
-							checked={sizePreset === 'custom'}
-							onChange={() => setSizePreset('custom')}
-							className="accent-green-500"
-						/>
-						Custom:
-					</label>
-					<input
-						type="number"
-						min="0"
-						step="0.1"
-						value={customSizeMB}
-						onFocus={() => setSizePreset('custom')}
-						onChange={(e) => {
-							setSizePreset('custom');
-							setCustomSizeMB(e.target.value);
-						}}
-						className="w-24 rounded-md bg-gray-900 border border-gray-700 px-2 py-1 text-sm focus:outline-none focus:border-green-500"
-					/>
-					<span className="text-gray-400 text-sm">MB</span>
-				</div>
+							<button
+								type="button"
+								onClick={() => fileInputRef.current?.click()}
+								className="px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+							>
+								Browse files
+							</button>
+							<button
+								type="button"
+								onClick={() => setShowUrlInput((v) => !v)}
+								className="text-sm text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary"
+							>
+								or paste a URL
+							</button>
+						</div>
 
-				<div className="mb-6">
-					<Disclosure title="Options">
-						<div className="space-y-3 pt-2">
-							<label className="flex items-center gap-3 cursor-pointer">
+						{showUrlInput && (
+							<div className="flex gap-2 mt-4">
 								<input
-									type="checkbox"
-									checked={muteAudio}
-									onChange={(e) => setMuteAudio(e.target.checked)}
-									className="accent-green-500 w-4 h-4 shrink-0"
+									type="url"
+									value={urlValue}
+									onChange={(e) => setUrlValue(e.target.value)}
+									placeholder="https://example.com/video.mp4"
+									className="flex-1 min-w-0 rounded-lg bg-background border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 								/>
-								<span className="text-sm text-gray-200">Remove all sound (mute)</span>
-							</label>
+								<button
+									type="button"
+									onClick={onLoadUrl}
+									disabled={urlLoading || !urlValue.trim()}
+									className="px-3 py-2 rounded-lg bg-secondary text-secondary-foreground disabled:opacity-50 text-sm font-medium"
+								>
+									{urlLoading ? 'Loading…' : 'Load'}
+								</button>
+							</div>
+						)}
+					</div>
+				</div>
 
-							<label className="flex items-center gap-3 cursor-pointer">
-								<input
-									type="checkbox"
-									checked={extraQuality}
-									onChange={(e) => setExtraQuality(e.target.checked)}
-									className="accent-green-500 w-4 h-4 shrink-0"
-								/>
-								<span className="text-sm text-gray-200">
-									Extra quality (slower)
-									<span className="block text-xs text-gray-500">Also lands closer to your target size (2-pass encoding)</span>
-								</span>
-							</label>
+				{/* 02 — settings (spans both rows, sticks alongside on desktop) */}
+				<div className="md:col-start-2 md:row-start-1 md:row-span-2 md:sticky md:top-6 rounded-2xl border border-border bg-card shadow-xl shadow-black/20 p-6 md:p-8 space-y-6">
+					<p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">02 — settings</p>
 
-							<div className="flex items-center gap-3 flex-wrap">
-								<label className="flex items-center gap-3 cursor-pointer">
-									<input
-										type="checkbox"
-										checked={trimEnabled}
-										onChange={(e) => setTrimEnabled(e.target.checked)}
-										className="accent-green-500 w-4 h-4 shrink-0"
-									/>
-								</label>
-								<div
-									className={`flex items-center gap-2 flex-wrap text-sm ${
-										trimEnabled ? 'text-gray-200' : 'text-gray-500'
+					<div>
+						<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Target size</p>
+						<div className="flex flex-wrap gap-2">
+							{PRESETS.map((preset) => (
+								<button
+									key={preset.value}
+									type="button"
+									onClick={() => setSizePreset(preset.value)}
+									className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+										sizePreset === preset.value
+											? 'bg-primary text-primary-foreground'
+											: 'bg-muted text-foreground hover:bg-accent'
 									}`}
 								>
-									<span>Skip the first</span>
+									{preset.label}
+								</button>
+							))}
+							<button
+								type="button"
+								onClick={() => setSizePreset('custom')}
+								className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+									sizePreset === 'custom' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground hover:bg-accent'
+								}`}
+							>
+								Custom
+							</button>
+						</div>
+						{sizePreset === 'custom' && (
+							<div className="flex items-center gap-2 mt-3">
+								<input
+									type="number"
+									min="0"
+									step="0.1"
+									autoFocus
+									value={customSizeMB}
+									onChange={(e) => setCustomSizeMB(e.target.value)}
+									placeholder="e.g. 15"
+									className="w-24 rounded-lg bg-background border border-border px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+								/>
+								<span className="text-sm text-muted-foreground">MB</span>
+							</div>
+						)}
+					</div>
+
+					<div className="space-y-4 pt-2 border-t border-border">
+						<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-4">Options</p>
+
+						<Switch checked={muteAudio} onChange={setMuteAudio} label="Remove all sound" description="Mutes the output entirely" />
+
+						<Switch
+							checked={extraQuality}
+							onChange={setExtraQuality}
+							label="Extra quality"
+							description="Slower 2-pass encode, lands closer to your target size"
+						/>
+
+						<div>
+							<Switch
+								checked={trimEnabled}
+								onChange={setTrimEnabled}
+								label="Trim the clip"
+								description="Cut time off the start and/or end"
+							/>
+							{trimEnabled && (
+								<div className="flex items-center gap-2 flex-wrap text-sm text-muted-foreground mt-3 pl-1">
+									<span>Skip first</span>
 									<input
 										type="number"
 										min="0"
-										disabled={!trimEnabled}
 										value={trimStart}
 										onChange={(e) => setTrimStart(e.target.value)}
-										className="w-16 rounded-md bg-gray-900 border border-gray-700 px-2 py-1 text-sm focus:outline-none focus:border-green-500 disabled:opacity-50"
+										className="w-16 rounded-lg bg-background border border-border px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 									/>
-									<span>seconds / the last</span>
+									<span>sec &middot; last</span>
 									<input
 										type="number"
 										min="0"
-										disabled={!trimEnabled}
 										value={trimEnd}
 										onChange={(e) => setTrimEnd(e.target.value)}
-										className="w-16 rounded-md bg-gray-900 border border-gray-700 px-2 py-1 text-sm focus:outline-none focus:border-green-500 disabled:opacity-50"
+										className="w-16 rounded-lg bg-background border border-border px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 									/>
-									<span>seconds</span>
+									<span>sec</span>
 								</div>
+							)}
+						</div>
+
+						<Switch checked={playSound} onChange={setPlaySound} label="Play a sound when done" />
+						<Switch checked={autoDownload} onChange={setAutoDownload} label="Auto download when done" />
+
+						<div className="flex items-center justify-between gap-4">
+							<label htmlFor="resolution" className="text-sm text-foreground">
+								Resolution
+							</label>
+							<select
+								id="resolution"
+								value={resolution}
+								onChange={(e) => setResolution(e.target.value as Resolution)}
+								className="rounded-lg bg-background border border-border px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+							>
+								<option value="original">Original</option>
+								<option value="1080">1080p</option>
+								<option value="720">720p</option>
+								<option value="480">480p</option>
+								<option value="360">360p</option>
+							</select>
+						</div>
+					</div>
+
+					<div className="pt-2 border-t border-border">
+						<button
+							type="button"
+							onClick={handleCompress}
+							disabled={!file || !isValidTargetSize || isProcessing}
+							className="mt-4 w-full py-3.5 rounded-full bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-lg hover:opacity-90 transition-opacity"
+						>
+							{isProcessing ? `${stage}${showPercent ? ` ${Math.round(progress * 100)}%` : ''}` : 'Compress'}
+						</button>
+
+						{isProcessing && (
+							<div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+								<div
+									className="h-full bg-primary transition-all duration-200"
+									style={{ width: `${Math.round(progress * 100)}%` }}
+								/>
 							</div>
+						)}
 
-							<label className="flex items-center gap-3 cursor-pointer">
-								<input
-									type="checkbox"
-									checked={playSound}
-									onChange={(e) => setPlaySound(e.target.checked)}
-									className="accent-green-500 w-4 h-4 shrink-0"
-								/>
-								<span className="text-sm text-gray-200">Play a sound when done</span>
-							</label>
+						{errorMessage && <p className="mt-4 text-sm text-red-400 text-center">{errorMessage}</p>}
+					</div>
+				</div>
 
-							<label className="flex items-center gap-3 cursor-pointer">
-								<input
-									type="checkbox"
-									checked={autoDownload}
-									onChange={(e) => setAutoDownload(e.target.checked)}
-									className="accent-green-500 w-4 h-4 shrink-0"
-								/>
-								<span className="text-sm text-gray-200">Auto download when done</span>
-							</label>
-
-							<div className="flex items-center justify-between gap-4 pt-2 border-t border-gray-800">
-								<label htmlFor="resolution" className="text-sm text-gray-300">
-									Resolution
-								</label>
-								<select
-									id="resolution"
-									value={resolution}
-									onChange={(e) => setResolution(e.target.value as Resolution)}
-									className="rounded-md bg-gray-900 border border-gray-700 px-2 py-1 text-sm focus:outline-none focus:border-green-500"
+				{/* Result + diagnostics */}
+				<div className="md:col-start-1 md:row-start-2 space-y-4">
+					{phase === 'done' && resultBlob && resultUrl && (
+						<div className="rounded-2xl border border-secondary/50 bg-secondary/10 p-6 text-center">
+							{reductionPct !== null && (
+								<p className="font-display text-3xl font-semibold text-secondary-foreground">{reductionPct}% smaller</p>
+							)}
+							<p className="text-sm text-muted-foreground mt-1">
+								{formatBytes(resultBlob.size)} (was {file ? formatBytes(file.size) : '?'}
+								{resultDuration != null ? `, ${formatDuration(resultDuration)}` : ''})
+							</p>
+							{sizeWarning && (
+								<p className="mt-2 text-xs text-yellow-500">
+									This target was very small for the video length &mdash; quality had to be reduced heavily to get close.
+								</p>
+							)}
+							<div className="mt-4 flex items-center justify-center gap-3">
+								<a
+									href={resultUrl}
+									download={outputName}
+									className="px-5 py-2 rounded-full bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
 								>
-									<option value="original">Original</option>
-									<option value="1080">1080p</option>
-									<option value="720">720p</option>
-									<option value="480">480p</option>
-									<option value="360">360p</option>
-								</select>
+									Download
+								</a>
+								<button
+									type="button"
+									onClick={() => {
+										setFile(null);
+										resetResult();
+									}}
+									className="px-5 py-2 rounded-full bg-muted text-foreground font-semibold hover:bg-accent transition-colors"
+								>
+									Compress another
+								</button>
+							</div>
+						</div>
+					)}
+
+					<Disclosure title="Engine status">
+						<div className="space-y-2 pt-2">
+							<p className="text-sm text-foreground">
+								<span className="text-muted-foreground">Status: </span>
+								{phase === 'working' ? stage : phase === 'done' ? 'Ready' : phase === 'error' ? 'Idle' : 'Not loaded'}
+							</p>
+							<p className="text-sm text-foreground">
+								<span className="text-muted-foreground">Engine: </span>
+								{engineMode === 'webcodecs'
+									? 'hardware-accelerated (WebCodecs)'
+									: engineMode === 'multi'
+										? 'multi-threaded (software, using multiple CPU cores)'
+										: engineMode === 'single'
+											? 'single-threaded (software)'
+											: webCodecsCapable
+												? 'hardware-accelerated available, used first on compress'
+												: multiThreadCapable
+													? 'multi-threaded software engine available, loads on first compress'
+													: 'single-threaded software engine (multi-core unavailable in this context)'}
+							</p>
+							<div className="h-32 overflow-y-auto rounded-lg bg-background border border-border p-2 font-mono text-[11px] text-muted-foreground leading-relaxed">
+								{logLines.length === 0 ? (
+									<p className="text-muted-foreground/60">No activity yet.</p>
+								) : (
+									logLines.map((line, i) => <div key={i}>{line}</div>)
+								)}
+								<div ref={logEndRef} />
 							</div>
 						</div>
 					</Disclosure>
 				</div>
+			</div>
 
-				<button
-					type="button"
-					onClick={handleCompress}
-					disabled={!file || !isValidTargetSize || isProcessing}
-					className="w-full py-3 rounded-md bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed font-bold text-lg transition-colors"
+			{/* Footer */}
+			<p className="mt-8 text-center text-xs font-mono text-muted-foreground">
+				built by{' '}
+				<a
+					href="https://jeydinpham.com"
+					target="_blank"
+					rel="noopener noreferrer"
+					className="text-primary hover:underline underline-offset-4"
 				>
-					{isProcessing ? `${stage}${showPercent ? ` ${Math.round(progress * 100)}%` : ''}` : 'Compress'}
-				</button>
-
-				{isProcessing && (
-					<div className="mt-3 h-2 w-full rounded-full bg-gray-800 overflow-hidden">
-						<div
-							className="h-full bg-green-500 transition-all duration-200"
-							style={{ width: `${Math.round(progress * 100)}%` }}
-						/>
-					</div>
-				)}
-
-				{errorMessage && <p className="mt-4 text-sm text-red-400 text-center">{errorMessage}</p>}
-
-				{phase === 'done' && resultBlob && resultUrl && (
-					<div className="mt-6 rounded-lg border border-green-700/60 bg-green-950/20 p-4 text-center">
-						<p className="font-semibold">
-							{formatBytes(resultBlob.size)}{' '}
-							<span className="text-gray-400 font-normal">
-								(was {file ? formatBytes(file.size) : '?'}
-								{resultDuration != null ? `, ${formatDuration(resultDuration)}` : ''})
-							</span>
-						</p>
-						{sizeWarning && (
-							<p className="mt-1 text-xs text-yellow-400">
-								This target was very small for the video length &mdash; quality had to be reduced heavily to get close.
-							</p>
-						)}
-						<a
-							href={resultUrl}
-							download={outputName}
-							className="mt-3 inline-block px-5 py-2 rounded-md bg-green-600 hover:bg-green-500 font-semibold"
-						>
-							Download
-						</a>
-						<button
-							type="button"
-							onClick={() => {
-								setFile(null);
-								resetResult();
-							}}
-							className="mt-3 ml-3 inline-block px-5 py-2 rounded-md bg-gray-700 hover:bg-gray-600 font-semibold"
-						>
-							Compress another
-						</button>
-					</div>
-				)}
-			</div>
-
-			<div className="mt-4">
-				<Disclosure title="Engine Status">
-					<div className="space-y-2 pt-2">
-						<p className="text-sm">
-							<span className="text-gray-400">Status: </span>
-							{phase === 'working' ? stage : phase === 'done' ? 'Ready' : phase === 'error' ? 'Idle' : 'Not loaded'}
-						</p>
-						<p className="text-sm">
-							<span className="text-gray-400">Engine: </span>
-							{engineMode === 'webcodecs'
-								? 'hardware-accelerated (WebCodecs)'
-								: engineMode === 'multi'
-									? 'multi-threaded (software, using multiple CPU cores)'
-									: engineMode === 'single'
-										? 'single-threaded (software)'
-										: webCodecsCapable
-											? 'hardware-accelerated available, used first on compress'
-											: multiThreadCapable
-												? 'multi-threaded software engine available, loads on first compress'
-												: 'single-threaded software engine (multi-core unavailable in this context)'}
-						</p>
-						<div className="h-32 overflow-y-auto rounded-md bg-black/60 border border-gray-800 p-2 font-mono text-[11px] text-gray-400 leading-relaxed">
-							{logLines.length === 0 ? (
-								<p className="text-gray-600">No activity yet.</p>
-							) : (
-								logLines.map((line, i) => <div key={i}>{line}</div>)
-							)}
-							<div ref={logEndRef} />
-						</div>
-					</div>
-				</Disclosure>
-			</div>
+					Jeydin Pham
+				</a>{' '}
+				&middot; runs entirely in your browser
+			</p>
 		</div>
 	);
 }

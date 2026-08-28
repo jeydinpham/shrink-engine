@@ -2,4 +2,75 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Put some useful styles here */
+/* Self-hosted Geist Sans/Mono (see lib/fonts.ts for why this is plain
+   @font-face instead of next/font/local). Files copied from the official
+   `geist` npm package. */
+@font-face {
+	font-family: 'Geist';
+	src: url('/fonts/Geist-Variable.woff2') format('woff2');
+	font-weight: 100 900;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Geist Mono';
+	src: url('/fonts/GeistMono-Variable.woff2') format('woff2');
+	font-weight: 100 900;
+	font-style: normal;
+	font-display: swap;
+}
+
+/*
+ * Palette ported 1:1 from jeydinpham.com's dark theme (warm near-black
+ * background, peach/amber primary, sage-green secondary) so this tool reads
+ * as part of the same site.
+ */
+:root {
+	--font-geist-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+	--font-geist-mono: 'Geist Mono', ui-monospace, monospace;
+	--background: oklch(16.5% .018 50);
+	--foreground: oklch(94.6% .011 70);
+	--card: oklch(24% .021 50);
+	--card-foreground: oklch(94.6% .011 70);
+	--primary: #fdba74;
+	--primary-foreground: #3f1f09;
+	--secondary: oklch(29.5% .045 124);
+	--secondary-foreground: oklch(91.5% .075 124);
+	--muted: oklch(28% .021 50);
+	--muted-foreground: oklch(75% .018 60);
+	--accent: oklch(32% .023 50);
+	--accent-foreground: oklch(94.6% .011 70);
+	--border: oklch(34% .025 50);
+	--input: oklch(41% .02 55);
+	--ring: #fdba74;
+	--radius: 0.625rem;
+}
+
+body {
+	background-color: var(--background);
+	color: var(--foreground);
+	min-height: 100vh;
+	/* Signature texture from jeydinpham.com: a faint grid plus two soft
+	   primary-colored glows tucked into opposite corners. */
+	background-image:
+		repeating-linear-gradient(0deg, #a991700d 0, #a991700d 1px, transparent 1px, transparent 28px),
+		repeating-linear-gradient(90deg, #a991700d 0, #a991700d 1px, transparent 1px, transparent 28px),
+		radial-gradient(
+			circle at 10% 12%,
+			color-mix(in oklab, var(--primary) 14%, transparent) 0,
+			color-mix(in oklab, var(--primary) 8%, transparent) 18%,
+			color-mix(in oklab, var(--primary) 3.6%, transparent) 34%,
+			color-mix(in oklab, var(--primary) 1.4%, transparent) 44%,
+			transparent 52%
+		),
+		radial-gradient(
+			circle at 90% 84%,
+			color-mix(in oklab, var(--primary) 9%, transparent) 0,
+			color-mix(in oklab, var(--primary) 5.4%, transparent) 20%,
+			color-mix(in oklab, var(--primary) 2.6%, transparent) 36%,
+			color-mix(in oklab, var(--primary) 1.1%, transparent) 46%,
+			transparent 54%
+		);
+	background-attachment: fixed;
+}
