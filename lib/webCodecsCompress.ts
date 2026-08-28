@@ -17,7 +17,13 @@ export function canUseWebCodecs(): boolean {
 	return typeof window !== 'undefined' && typeof (window as unknown as { VideoEncoder?: unknown }).VideoEncoder !== 'undefined';
 }
 
-const PROBE_TIMEOUT_MS = 8_000;
+// Generous on purpose: a cold hardware decoder (first decode of the whole
+// session) can have real one-time init latency, and this only has to run
+// once per file, well before Compress is pressed — a false "unsupported"
+// here is worse than making the user wait a few extra seconds for an
+// accurate answer, since it silently takes hardware encoding off the table
+// for the whole job.
+const PROBE_TIMEOUT_MS = 15_000;
 
 /**
  * Actually attempts to decode the video's first frame via WebCodecs, rather
@@ -30,8 +36,11 @@ const PROBE_TIMEOUT_MS = 8_000;
  * long file (e.g. hardware decoder resource exhaustion) can't be predicted
  * from frame 1 — but it catches the common case before the user ever hits
  * Compress instead of only discovering it mid-job.
+ *
+ * `onLog`, if given, reports *why* the probe passed/failed so a rejection
+ * never shows up as a silent, unexplained switch to the software engine.
  */
-export async function probeWebCodecsDecode(file: File): Promise<boolean> {
+export async function probeWebCodecsDecode(file: File, onLog?: (message: string) => void): Promise<boolean> {
 	if (!canUseWebCodecs()) return false;
 
 	const { ALL_FORMATS, BlobSource, Input, VideoSampleSink } = await import('mediabunny');
@@ -39,16 +48,36 @@ export async function probeWebCodecsDecode(file: File): Promise<boolean> {
 
 	try {
 		const videoTrack = await input.getPrimaryVideoTrack();
-		if (!videoTrack) return false;
+		if (!videoTrack) {
+			onLog?.('[webcodecs] pre-flight check: no video track found — skipping hardware encoding for this file.');
+			return false;
+		}
+
+		// getSample(timestamp) returns null if `timestamp` is before the
+		// track's first packet — and that first timestamp is often NOT 0.
+		// Confirmed in the wild: an OBS-recorded VP9 clip's video track
+		// started at a small positive offset, so probing at a hardcoded 0
+		// always came back "no sample" and wrongly ruled out WebCodecs for
+		// every file like it.
+		const firstTimestamp = await videoTrack.getFirstTimestamp();
 
 		const sink = new VideoSampleSink(videoTrack);
 		const sample = await Promise.race([
-			sink.getSample(0),
+			sink.getSample(firstTimestamp),
 			new Promise<never>((_, reject) => setTimeout(() => reject(new Error('decode probe timed out')), PROBE_TIMEOUT_MS)),
 		]);
 		sample?.close();
-		return sample != null;
-	} catch {
+		if (sample == null) {
+			onLog?.('[webcodecs] pre-flight check: no decodable frame at the start of this file — skipping hardware encoding.');
+			return false;
+		}
+		return true;
+	} catch (err) {
+		onLog?.(
+			`[webcodecs] pre-flight check failed (${
+				err instanceof Error ? err.message : 'unknown error'
+			}) — this file will use the software engine instead.`
+		);
 		return false;
 	} finally {
 		input.dispose();

@@ -88,6 +88,11 @@ export function VideoCompressor() {
 	// browser supporting the API at all doesn't mean it can decode any given
 	// file (codec/profile/resource issues only show up on real data).
 	const [fileDecodeSupport, setFileDecodeSupport] = useState<'checking' | 'supported' | 'unsupported' | null>(null);
+	// The pre-flight probe's own explanation for why it rejected this file —
+	// kept around so it can survive into the compression run's log (which
+	// clears on every Compress press) instead of being logged once, pre-run,
+	// and then silently wiped before the user ever sees it.
+	const [webCodecsSkipReason, setWebCodecsSkipReason] = useState<string | null>(null);
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const autoDownloadedUrlRef = useRef<string | null>(null);
@@ -97,23 +102,32 @@ export function VideoCompressor() {
 		setWebCodecsCapable(canUseWebCodecs());
 	}, []);
 
+	const appendLog = useCallback((message: string) => {
+		setLogLines((prev) => (prev.length > 200 ? [...prev.slice(-200), message] : [...prev, message]));
+	}, []);
+
 	// Pre-flight check as soon as a file is picked, well before Compress is
 	// pressed — actually tries to decode the first frame instead of just
 	// trusting a static "is this codec supported" query.
 	useEffect(() => {
 		if (!file || !webCodecsCapable) {
 			setFileDecodeSupport(null);
+			setWebCodecsSkipReason(null);
 			return;
 		}
 		let cancelled = false;
 		setFileDecodeSupport('checking');
-		probeWebCodecsDecode(file).then((ok) => {
+		setWebCodecsSkipReason(null);
+		probeWebCodecsDecode(file, (message) => {
+			appendLog(message);
+			setWebCodecsSkipReason(message);
+		}).then((ok) => {
 			if (!cancelled) setFileDecodeSupport(ok ? 'supported' : 'unsupported');
 		});
 		return () => {
 			cancelled = true;
 		};
-	}, [file, webCodecsCapable]);
+	}, [file, webCodecsCapable, appendLog]);
 
 	useEffect(() => {
 		if (!resultBlob) {
@@ -137,10 +151,6 @@ export function VideoCompressor() {
 		a.download = outputName;
 		a.click();
 	}, [autoDownload, resultUrl, phase, outputName]);
-
-	const appendLog = useCallback((message: string) => {
-		setLogLines((prev) => (prev.length > 200 ? [...prev.slice(-200), message] : [...prev, message]));
-	}, []);
 
 	const resetResult = useCallback(() => {
 		setResultBlob(null);
@@ -213,7 +223,11 @@ export function VideoCompressor() {
 		setResultBlob(null);
 		setResultDuration(null);
 		setProgress(0);
-		setLogLines([]);
+		// Fresh log per run, but keep the pre-flight probe's explanation (if
+		// any) instead of wiping it — it's the only place that says why this
+		// run isn't using WebCodecs at all, and it happened before this log
+		// was cleared, so it'd otherwise vanish without the user ever seeing it.
+		setLogLines(webCodecsSkipReason ? [webCodecsSkipReason] : []);
 		setPhase('working');
 		setStage('Starting…');
 		autoDownloadedUrlRef.current = null;
@@ -269,6 +283,7 @@ export function VideoCompressor() {
 		playSound,
 		appendLog,
 		fileDecodeSupport,
+		webCodecsSkipReason,
 	]);
 
 	const showPercent = stage.startsWith('Encoding');
