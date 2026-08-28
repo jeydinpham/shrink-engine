@@ -9,6 +9,7 @@ export interface WebCodecsCompressionResult {
 
 export interface WebCodecsCallbacks {
 	onProgress?: (progress: number) => void;
+	onLog?: (message: string) => void;
 }
 
 /** Feature-detects the WebCodecs API itself, cheap enough to call before importing mediabunny. */
@@ -59,6 +60,9 @@ export async function compressWithWebCodecs(
 		canEncodeVideo,
 	} = await import('mediabunny');
 
+	const { onLog } = callbacks;
+	onLog?.('[webcodecs] probing video…');
+
 	const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(file) });
 
 	try {
@@ -72,6 +76,7 @@ export async function compressWithWebCodecs(
 			throw new Error('No video track found.');
 		}
 		const sourceHeight = await videoTrack.getDisplayHeight();
+		onLog?.(`[webcodecs] duration ${totalDuration.toFixed(2)}s, source height ${sourceHeight}p`);
 
 		const trimStart = Math.max(0, options.trimStartSec || 0);
 		const trimEnd = Math.max(0, options.trimEndSec || 0);
@@ -96,6 +101,7 @@ export async function compressWithWebCodecs(
 		if (!canEncode) {
 			throw new Error('Hardware/browser H.264 encoding is not available here.');
 		}
+		onLog?.(`[webcodecs] hardware/browser H.264 encoder available, target bitrate ~${videoBitrateKbps}kbps`);
 
 		const output = new Output({ format: new Mp4OutputFormat(), target: new BufferTarget() });
 
@@ -119,9 +125,16 @@ export async function compressWithWebCodecs(
 			throw new Error(`This video can't be hardware-encoded here (${reasons}).`);
 		}
 
+		onLog?.('[webcodecs] encoding…');
 		let lastProgressAt = Date.now();
+		let lastLoggedTenth = -1;
 		conversion.onProgress = (progress) => {
 			lastProgressAt = Date.now();
+			const tenth = Math.floor(progress * 10);
+			if (tenth > lastLoggedTenth) {
+				lastLoggedTenth = tenth;
+				onLog?.(`[webcodecs] progress: ${Math.round(progress * 100)}%`);
+			}
 			callbacks.onProgress?.(progress);
 		};
 
@@ -151,6 +164,7 @@ export async function compressWithWebCodecs(
 			);
 		}
 
+		onLog?.(`[webcodecs] done — output ${(buffer.byteLength / 1024 / 1024).toFixed(2)}MB`);
 		const blob = new Blob([buffer], { type: 'video/mp4' });
 		return { blob, sizeBytes: blob.size, belowMinimum, durationSeconds: effectiveDuration };
 	} finally {

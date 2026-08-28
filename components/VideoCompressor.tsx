@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Disclosure } from './Disclosure';
 import { Switch } from './Switch';
+import { EngineStatus } from './EngineStatus';
 import { formatBytes, formatDuration } from '@/lib/format';
 import { looksLikeVideoFile, VIDEO_ACCEPT } from '@/lib/fileTypes';
 import { playCompletionSound } from '@/lib/sound';
@@ -47,6 +47,14 @@ function CheckCircleIcon({ className }: { className?: string }) {
 	);
 }
 
+function XIcon({ className }: { className?: string }) {
+	return (
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className={className}>
+			<path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+		</svg>
+	);
+}
+
 export function VideoCompressor() {
 	const [file, setFile] = useState<File | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
@@ -83,7 +91,6 @@ export function VideoCompressor() {
 	const [engineMode, setEngineMode] = useState<EngineUsed | 'unknown'>('unknown');
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const logEndRef = useRef<HTMLDivElement>(null);
 	const autoDownloadedUrlRef = useRef<string | null>(null);
 
 	useEffect(() => {
@@ -100,10 +107,6 @@ export function VideoCompressor() {
 		setResultUrl(url);
 		return () => URL.revokeObjectURL(url);
 	}, [resultBlob]);
-
-	useEffect(() => {
-		logEndRef.current?.scrollIntoView({ block: 'nearest' });
-	}, [logLines]);
 
 	const outputName = file ? `${file.name.replace(/\.[^/.]+$/, '')}-compressed.mp4` : 'compressed.mp4';
 
@@ -131,6 +134,23 @@ export function VideoCompressor() {
 		setStage('Not loaded');
 		setProgress(0);
 	}, []);
+
+	const dismissResult = useCallback(() => {
+		setFile(null);
+		resetResult();
+	}, [resetResult]);
+
+	const resultModalOpen = phase === 'done' && !!resultBlob && !!resultUrl;
+
+	// Let Escape close the result modal, matching click-outside/X behavior.
+	useEffect(() => {
+		if (!resultModalOpen) return;
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') dismissResult();
+		};
+		window.addEventListener('keydown', onKeyDown);
+		return () => window.removeEventListener('keydown', onKeyDown);
+	}, [resultModalOpen, dismissResult]);
 
 	const handleFile = useCallback(
 		(nextFile: File) => {
@@ -242,306 +262,319 @@ export function VideoCompressor() {
 	const reductionPct = file && resultBlob ? Math.max(0, Math.round((1 - resultBlob.size / file.size) * 100)) : null;
 
 	return (
-		<div className="w-full max-w-5xl mx-auto">
+		<div className="w-full max-w-5xl mx-auto flex-1 flex flex-col">
 			{/* Hero */}
-			<div className="mb-10 max-w-2xl">
-				<p className="font-mono text-xs uppercase tracking-[0.2em] text-primary mb-3">a tool by jeydin</p>
-				<h1 className="font-display text-4xl md:text-6xl font-semibold tracking-tight text-foreground mb-4">
+			<div className="mb-6 max-w-2xl">
+				<h1 className="font-display text-3xl md:text-5xl font-semibold tracking-tight text-foreground mb-3">
 					shrink your videos.
 				</h1>
-				<p className="text-muted-foreground">
-					Drop in a video, pick a target size, and it compresses right in your browser &mdash; no upload, no server.
+				<p className="text-muted-foreground text-sm md:text-base">
+					Got a video that’s too big to send? Drop it in, tell it how small it needs to be, and it’ll shrink itself
+					right here in your browser &mdash; nothing gets uploaded anywhere.
 				</p>
 			</div>
 
-			<div className="grid gap-6 md:grid-cols-[1.4fr_1fr] md:grid-rows-[auto_auto] items-start">
-				{/* 01 — your video */}
-				<div className="md:col-start-1 md:row-start-1 rounded-2xl border border-border bg-card shadow-xl shadow-black/20 p-6 md:p-8">
-					<p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground mb-5">01 — your video</p>
+			{/* One unified panel: video + engine status on the left, settings on the right,
+			    divided by hairlines instead of separate floating cards — the two sides
+			    are always the same height since they're one grid row. */}
+			<div className="rounded-2xl border border-border bg-card shadow-xl shadow-black/20 overflow-hidden">
+				<div className="grid md:grid-cols-[1.4fr_1fr]">
+					{/* left: your video + engine status */}
+					<div className="flex flex-col border-b md:border-b-0 md:border-r border-border">
+						<div className="p-5 md:p-6 border-b border-border">
+							<p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground mb-4">01 — your video</p>
 
-					<div
-						onDragOver={(e) => {
-							e.preventDefault();
-							setIsDragging(true);
-						}}
-						onDragLeave={() => setIsDragging(false)}
-						onDrop={onDrop}
-						className={`rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
-							isDragging ? 'border-primary bg-primary/5' : 'border-border'
-						}`}
-					>
-						{file ? (
-							<>
-								<CheckCircleIcon className="h-8 w-8 mx-auto mb-3 text-secondary-foreground" />
-								<p className="font-medium break-all text-foreground">{file.name}</p>
-								<p className="text-sm text-muted-foreground">{formatBytes(file.size)}</p>
-							</>
-						) : (
-							<>
-								<UploadIcon className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
-								<p className="font-medium text-foreground">Drag &amp; drop a video</p>
-								<p className="text-sm text-muted-foreground">or choose a file below</p>
-							</>
-						)}
-
-						<div className="mt-5 flex items-center justify-center gap-3 flex-wrap">
-							<input
-								ref={fileInputRef}
-								type="file"
-								accept={VIDEO_ACCEPT}
-								className="hidden"
-								onChange={(e) => {
-									const picked = e.target.files?.[0];
-									if (picked) handleFile(picked);
-									e.target.value = '';
+							<div
+								onDragOver={(e) => {
+									e.preventDefault();
+									setIsDragging(true);
 								}}
-							/>
-							<button
-								type="button"
-								onClick={() => fileInputRef.current?.click()}
-								className="px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
-							>
-								Browse files
-							</button>
-							<button
-								type="button"
-								onClick={() => setShowUrlInput((v) => !v)}
-								className="text-sm text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary"
-							>
-								or paste a URL
-							</button>
-						</div>
-
-						{showUrlInput && (
-							<div className="flex gap-2 mt-4">
-								<input
-									type="url"
-									value={urlValue}
-									onChange={(e) => setUrlValue(e.target.value)}
-									placeholder="https://example.com/video.mp4"
-									className="flex-1 min-w-0 rounded-lg bg-background border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-								/>
-								<button
-									type="button"
-									onClick={onLoadUrl}
-									disabled={urlLoading || !urlValue.trim()}
-									className="px-3 py-2 rounded-lg bg-secondary text-secondary-foreground disabled:opacity-50 text-sm font-medium"
-								>
-									{urlLoading ? 'Loading…' : 'Load'}
-								</button>
-							</div>
-						)}
-					</div>
-				</div>
-
-				{/* 02 — settings (spans both rows, sticks alongside on desktop) */}
-				<div className="md:col-start-2 md:row-start-1 md:row-span-2 md:sticky md:top-6 rounded-2xl border border-border bg-card shadow-xl shadow-black/20 p-6 md:p-8 space-y-6">
-					<p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">02 — settings</p>
-
-					<div>
-						<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Target size</p>
-						<div className="flex flex-wrap gap-2">
-							{PRESETS.map((preset) => (
-								<button
-									key={preset.value}
-									type="button"
-									onClick={() => setSizePreset(preset.value)}
-									className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-										sizePreset === preset.value
-											? 'bg-primary text-primary-foreground'
-											: 'bg-muted text-foreground hover:bg-accent'
-									}`}
-								>
-									{preset.label}
-								</button>
-							))}
-							<button
-								type="button"
-								onClick={() => setSizePreset('custom')}
-								className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-									sizePreset === 'custom' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground hover:bg-accent'
+								onDragLeave={() => setIsDragging(false)}
+								onDrop={onDrop}
+								className={`rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+									isDragging ? 'border-primary bg-primary/5' : 'border-border'
 								}`}
 							>
-								Custom
-							</button>
-						</div>
-						{sizePreset === 'custom' && (
-							<div className="flex items-center gap-2 mt-3">
-								<input
-									type="number"
-									min="0"
-									step="0.1"
-									autoFocus
-									value={customSizeMB}
-									onChange={(e) => setCustomSizeMB(e.target.value)}
-									placeholder="e.g. 15"
-									className="w-24 rounded-lg bg-background border border-border px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-								/>
-								<span className="text-sm text-muted-foreground">MB</span>
+								{file ? (
+									<>
+										<CheckCircleIcon className="h-7 w-7 mx-auto mb-2 text-secondary-foreground" />
+										<p className="font-medium break-all text-foreground">{file.name}</p>
+										<p className="text-sm text-muted-foreground">{formatBytes(file.size)}</p>
+									</>
+								) : (
+									<>
+										<UploadIcon className="h-7 w-7 mx-auto mb-2 text-muted-foreground" />
+										<p className="font-medium text-foreground">Drag &amp; drop a video</p>
+										<p className="text-sm text-muted-foreground">or choose a file below</p>
+									</>
+								)}
+
+								<div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
+									<input
+										ref={fileInputRef}
+										type="file"
+										accept={VIDEO_ACCEPT}
+										className="hidden"
+										onChange={(e) => {
+											const picked = e.target.files?.[0];
+											if (picked) handleFile(picked);
+											e.target.value = '';
+										}}
+									/>
+									<button
+										type="button"
+										onClick={() => fileInputRef.current?.click()}
+										className="px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+									>
+										Browse files
+									</button>
+									<button
+										type="button"
+										onClick={() => setShowUrlInput((v) => !v)}
+										className="text-sm text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary"
+									>
+										or paste a URL
+									</button>
+								</div>
+
+								{showUrlInput && (
+									<div className="flex gap-2 mt-4">
+										<input
+											type="url"
+											value={urlValue}
+											onChange={(e) => setUrlValue(e.target.value)}
+											placeholder="https://example.com/video.mp4"
+											className="flex-1 min-w-0 rounded-lg bg-background border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+										/>
+										<button
+											type="button"
+											onClick={onLoadUrl}
+											disabled={urlLoading || !urlValue.trim()}
+											className="px-3 py-2 rounded-lg bg-secondary text-secondary-foreground disabled:opacity-50 text-sm font-medium"
+										>
+											{urlLoading ? 'Loading…' : 'Load'}
+										</button>
+									</div>
+								)}
 							</div>
-						)}
+						</div>
+
+						<div className="p-5 md:p-6 flex-1 flex flex-col">
+							<EngineStatus
+								statusText={
+									phase === 'working' ? stage : phase === 'done' ? 'Ready' : phase === 'error' ? 'Idle' : 'Not loaded'
+								}
+								engineText={
+									engineMode === 'webcodecs'
+										? 'hardware-accelerated (WebCodecs)'
+										: engineMode === 'multi'
+											? 'multi-threaded (software, using multiple CPU cores)'
+											: engineMode === 'single'
+												? 'single-threaded (software)'
+												: webCodecsCapable
+													? 'hardware-accelerated available, used first on compress'
+													: multiThreadCapable
+														? 'multi-threaded software engine available, loads on first compress'
+														: 'single-threaded software engine (multi-core unavailable in this context)'
+								}
+								logLines={logLines}
+							/>
+						</div>
 					</div>
 
-					<div className="space-y-4 pt-2 border-t border-border">
-						<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-4">Options</p>
-
-						<Switch checked={muteAudio} onChange={setMuteAudio} label="Remove all sound" description="Mutes the output entirely" />
-
-						<Switch
-							checked={extraQuality}
-							onChange={setExtraQuality}
-							label="Extra quality"
-							description="Slower 2-pass encode, lands closer to your target size"
-						/>
+					{/* right: settings */}
+					<div className="p-5 md:p-6 flex flex-col space-y-5">
+						<p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">02 — settings</p>
 
 						<div>
-							<Switch
-								checked={trimEnabled}
-								onChange={setTrimEnabled}
-								label="Trim the clip"
-								description="Cut time off the start and/or end"
-							/>
-							{trimEnabled && (
-								<div className="flex items-center gap-2 flex-wrap text-sm text-muted-foreground mt-3 pl-1">
-									<span>Skip first</span>
+							<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Target size</p>
+							<div className="flex flex-wrap gap-2">
+								{PRESETS.map((preset) => (
+									<button
+										key={preset.value}
+										type="button"
+										onClick={() => setSizePreset(preset.value)}
+										className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+											sizePreset === preset.value
+												? 'bg-primary text-primary-foreground'
+												: 'bg-muted text-foreground hover:bg-accent'
+										}`}
+									>
+										{preset.label}
+									</button>
+								))}
+								<button
+									type="button"
+									onClick={() => setSizePreset('custom')}
+									className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+										sizePreset === 'custom' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground hover:bg-accent'
+									}`}
+								>
+									Custom
+								</button>
+							</div>
+							{sizePreset === 'custom' && (
+								<div className="flex items-center gap-2 mt-3">
 									<input
 										type="number"
 										min="0"
-										value={trimStart}
-										onChange={(e) => setTrimStart(e.target.value)}
-										className="w-16 rounded-lg bg-background border border-border px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+										step="0.1"
+										autoFocus
+										value={customSizeMB}
+										onChange={(e) => setCustomSizeMB(e.target.value)}
+										placeholder="e.g. 15"
+										className="w-24 rounded-lg bg-background border border-border px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 									/>
-									<span>sec &middot; last</span>
-									<input
-										type="number"
-										min="0"
-										value={trimEnd}
-										onChange={(e) => setTrimEnd(e.target.value)}
-										className="w-16 rounded-lg bg-background border border-border px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-									/>
-									<span>sec</span>
+									<span className="text-sm text-muted-foreground">MB</span>
 								</div>
 							)}
 						</div>
 
-						<Switch checked={playSound} onChange={setPlaySound} label="Play a sound when done" />
-						<Switch checked={autoDownload} onChange={setAutoDownload} label="Auto download when done" />
+						<div className="space-y-3 pt-1 border-t border-border">
+							<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-3">Options</p>
 
-						<div className="flex items-center justify-between gap-4">
-							<label htmlFor="resolution" className="text-sm text-foreground">
-								Resolution
-							</label>
-							<select
-								id="resolution"
-								value={resolution}
-								onChange={(e) => setResolution(e.target.value as Resolution)}
-								className="rounded-lg bg-background border border-border px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-							>
-								<option value="original">Original</option>
-								<option value="1080">1080p</option>
-								<option value="720">720p</option>
-								<option value="480">480p</option>
-								<option value="360">360p</option>
-							</select>
-						</div>
-					</div>
+							<Switch checked={muteAudio} onChange={setMuteAudio} label="Remove all sound" description="Mutes the output entirely" />
 
-					<div className="pt-2 border-t border-border">
-						<button
-							type="button"
-							onClick={handleCompress}
-							disabled={!file || !isValidTargetSize || isProcessing}
-							className="mt-4 w-full py-3.5 rounded-full bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-lg hover:opacity-90 transition-opacity"
-						>
-							{isProcessing ? `${stage}${showPercent ? ` ${Math.round(progress * 100)}%` : ''}` : 'Compress'}
-						</button>
+							<Switch
+								checked={extraQuality}
+								onChange={setExtraQuality}
+								label="Extra quality"
+								description="Slower 2-pass encode, lands closer to your target size"
+							/>
 
-						{isProcessing && (
-							<div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-								<div
-									className="h-full bg-primary transition-all duration-200"
-									style={{ width: `${Math.round(progress * 100)}%` }}
+							<div>
+								<Switch
+									checked={trimEnabled}
+									onChange={setTrimEnabled}
+									label="Trim the clip"
+									description="Cut time off the start and/or end"
 								/>
-							</div>
-						)}
-
-						{errorMessage && <p className="mt-4 text-sm text-red-400 text-center">{errorMessage}</p>}
-					</div>
-				</div>
-
-				{/* Result + diagnostics */}
-				<div className="md:col-start-1 md:row-start-2 space-y-4">
-					{phase === 'done' && resultBlob && resultUrl && (
-						<div className="rounded-2xl border border-secondary/50 bg-secondary/10 p-6 text-center">
-							{reductionPct !== null && (
-								<p className="font-display text-3xl font-semibold text-secondary-foreground">{reductionPct}% smaller</p>
-							)}
-							<p className="text-sm text-muted-foreground mt-1">
-								{formatBytes(resultBlob.size)} (was {file ? formatBytes(file.size) : '?'}
-								{resultDuration != null ? `, ${formatDuration(resultDuration)}` : ''})
-							</p>
-							{sizeWarning && (
-								<p className="mt-2 text-xs text-yellow-500">
-									This target was very small for the video length &mdash; quality had to be reduced heavily to get close.
-								</p>
-							)}
-							<div className="mt-4 flex items-center justify-center gap-3">
-								<a
-									href={resultUrl}
-									download={outputName}
-									className="px-5 py-2 rounded-full bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
-								>
-									Download
-								</a>
-								<button
-									type="button"
-									onClick={() => {
-										setFile(null);
-										resetResult();
-									}}
-									className="px-5 py-2 rounded-full bg-muted text-foreground font-semibold hover:bg-accent transition-colors"
-								>
-									Compress another
-								</button>
-							</div>
-						</div>
-					)}
-
-					<Disclosure title="Engine status">
-						<div className="space-y-2 pt-2">
-							<p className="text-sm text-foreground">
-								<span className="text-muted-foreground">Status: </span>
-								{phase === 'working' ? stage : phase === 'done' ? 'Ready' : phase === 'error' ? 'Idle' : 'Not loaded'}
-							</p>
-							<p className="text-sm text-foreground">
-								<span className="text-muted-foreground">Engine: </span>
-								{engineMode === 'webcodecs'
-									? 'hardware-accelerated (WebCodecs)'
-									: engineMode === 'multi'
-										? 'multi-threaded (software, using multiple CPU cores)'
-										: engineMode === 'single'
-											? 'single-threaded (software)'
-											: webCodecsCapable
-												? 'hardware-accelerated available, used first on compress'
-												: multiThreadCapable
-													? 'multi-threaded software engine available, loads on first compress'
-													: 'single-threaded software engine (multi-core unavailable in this context)'}
-							</p>
-							<div className="h-32 overflow-y-auto rounded-lg bg-background border border-border p-2 font-mono text-[11px] text-muted-foreground leading-relaxed">
-								{logLines.length === 0 ? (
-									<p className="text-muted-foreground/60">No activity yet.</p>
-								) : (
-									logLines.map((line, i) => <div key={i}>{line}</div>)
+								{trimEnabled && (
+									<div className="flex items-center gap-2 flex-wrap text-sm text-muted-foreground mt-3 pl-1">
+										<span>Skip first</span>
+										<input
+											type="number"
+											min="0"
+											value={trimStart}
+											onChange={(e) => setTrimStart(e.target.value)}
+											className="w-16 rounded-lg bg-background border border-border px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+										/>
+										<span>sec &middot; last</span>
+										<input
+											type="number"
+											min="0"
+											value={trimEnd}
+											onChange={(e) => setTrimEnd(e.target.value)}
+											className="w-16 rounded-lg bg-background border border-border px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+										/>
+										<span>sec</span>
+									</div>
 								)}
-								<div ref={logEndRef} />
+							</div>
+
+							<Switch checked={playSound} onChange={setPlaySound} label="Play a sound when done" />
+							<Switch checked={autoDownload} onChange={setAutoDownload} label="Auto download when done" />
+
+							<div className="flex items-center justify-between gap-4">
+								<label htmlFor="resolution" className="text-sm text-foreground">
+									Resolution
+								</label>
+								<select
+									id="resolution"
+									value={resolution}
+									onChange={(e) => setResolution(e.target.value as Resolution)}
+									className="rounded-lg bg-background border border-border px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+								>
+									<option value="original">Original</option>
+									<option value="1080">1080p</option>
+									<option value="720">720p</option>
+									<option value="480">480p</option>
+									<option value="360">360p</option>
+								</select>
 							</div>
 						</div>
-					</Disclosure>
+
+						<div className="pt-1 border-t border-border mt-auto">
+							<button
+								type="button"
+								onClick={handleCompress}
+								disabled={!file || !isValidTargetSize || isProcessing}
+								className="mt-3 w-full py-3 rounded-full bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-lg hover:opacity-90 transition-opacity"
+							>
+								{isProcessing ? `${stage}${showPercent ? ` ${Math.round(progress * 100)}%` : ''}` : 'Compress'}
+							</button>
+
+							{isProcessing && (
+								<div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+									<div
+										className="h-full bg-primary transition-all duration-200"
+										style={{ width: `${Math.round(progress * 100)}%` }}
+									/>
+								</div>
+							)}
+
+							{errorMessage && <p className="mt-4 text-sm text-red-400 text-center">{errorMessage}</p>}
+						</div>
+					</div>
 				</div>
 			</div>
 
+			{resultModalOpen && (
+				<div
+					role="presentation"
+					onClick={dismissResult}
+					className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+				>
+					<div
+						role="dialog"
+						aria-modal="true"
+						aria-label="Compression result"
+						onClick={(e) => e.stopPropagation()}
+						className="relative w-full max-w-md rounded-2xl border border-secondary/50 bg-card shadow-2xl p-6 text-center"
+					>
+						<button
+							type="button"
+							onClick={dismissResult}
+							aria-label="Close"
+							className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
+						>
+							<XIcon className="h-5 w-5" />
+						</button>
+
+						{reductionPct !== null && (
+							<p className="font-display text-3xl font-semibold text-secondary-foreground">{reductionPct}% smaller</p>
+						)}
+						<p className="text-sm text-muted-foreground mt-1">
+							{formatBytes(resultBlob!.size)} (was {file ? formatBytes(file.size) : '?'}
+							{resultDuration != null ? `, ${formatDuration(resultDuration)}` : ''})
+						</p>
+						{sizeWarning && (
+							<p className="mt-2 text-xs text-yellow-500">
+								This target was very small for the video length &mdash; quality had to be reduced heavily to get close.
+							</p>
+						)}
+						<div className="mt-4 flex items-center justify-center gap-3">
+							<a
+								href={resultUrl!}
+								download={outputName}
+								className="px-5 py-2 rounded-full bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
+							>
+								Download
+							</a>
+							<button
+								type="button"
+								onClick={dismissResult}
+								className="px-5 py-2 rounded-full bg-muted text-foreground font-semibold hover:bg-accent transition-colors"
+							>
+								Compress another
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
 			{/* Footer */}
-			<p className="mt-8 text-center text-xs font-mono text-muted-foreground">
+			<p className="mt-auto pt-6 text-center text-xs font-mono text-muted-foreground">
 				built by{' '}
 				<a
 					href="https://jeydinpham.com"

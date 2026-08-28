@@ -14,7 +14,7 @@ export default function Home() {
         <link rel="icon" href="/favicon.png" />
       </Head>
 
-      <div className="min-h-screen flex flex-col justify-center items-center px-4 py-16">
+      <div className="min-h-screen flex flex-col items-center px-4 py-8">
         <VideoCompressor />
       </div>
     </>

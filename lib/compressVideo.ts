@@ -20,7 +20,7 @@ export async function compressVideo(
 	if (canUseWebCodecs()) {
 		try {
 			callbacks.onPhase?.('encoding');
-			const result = await compressWithWebCodecs(file, options, { onProgress: callbacks.onProgress });
+			const result = await compressWithWebCodecs(file, options, { onProgress: callbacks.onProgress, onLog: callbacks.onLog });
 			callbacks.onEngineReady?.('webcodecs');
 			return result;
 		} catch (err) {
