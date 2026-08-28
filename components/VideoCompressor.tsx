@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Switch } from './Switch';
 import { EngineStatus } from './EngineStatus';
 import { Modal } from './Modal';
+import { Tooltip } from './Tooltip';
 import { formatBytes, formatDuration } from '@/lib/format';
 import { looksLikeVideoFile, VIDEO_ACCEPT } from '@/lib/fileTypes';
 import { playCompletionSound } from '@/lib/sound';
@@ -398,10 +399,22 @@ export function VideoCompressor() {
 											: engineMode === 'single'
 												? 'Single-threaded software'
 												: webCodecsCapable
-													? 'Hardware acceleration is available — used automatically when you compress'
+													? (
+														<Tooltip content="Used automatically when you compress, with an automatic fallback to software if it can’t hit your target size.">
+															WebCodecs hardware encoding available
+														</Tooltip>
+													)
 													: multiThreadCapable
-														? 'Multi-threaded software available — loads when you compress'
-														: 'Single-threaded software (multi-core isn’t available here)'
+														? (
+															<Tooltip content="Hardware encoding isn’t available in this browser. Loads a multi-core software (ffmpeg.wasm) encoder when you compress.">
+																Multi-threaded software available
+															</Tooltip>
+														)
+														: (
+															<Tooltip content="Hardware encoding and multi-core both aren’t available here. Falls back to a single-core software (ffmpeg.wasm) encoder when you compress — still works, just slower.">
+																Single-threaded software available
+															</Tooltip>
+														)
 								}
 								logLines={logLines}
 							/>

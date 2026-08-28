@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 
 interface EngineStatusProps {
 	statusText: string;
-	engineText: string;
+	engineText: React.ReactNode;
 	logLines: string[];
 }
 
