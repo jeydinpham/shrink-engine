@@ -383,16 +383,16 @@ export function VideoCompressor() {
 								}
 								engineText={
 									engineMode === 'webcodecs'
-										? 'hardware-accelerated (WebCodecs)'
+										? 'Hardware-accelerated (WebCodecs)'
 										: engineMode === 'multi'
-											? 'multi-threaded (software, using multiple CPU cores)'
+											? 'Multi-threaded software (several CPU cores)'
 											: engineMode === 'single'
-												? 'single-threaded (software)'
+												? 'Single-threaded software'
 												: webCodecsCapable
-													? 'hardware-accelerated available, used first on compress'
+													? 'Hardware acceleration is available — used automatically when you compress'
 													: multiThreadCapable
-														? 'multi-threaded software engine available, loads on first compress'
-														: 'single-threaded software engine (multi-core unavailable in this context)'
+														? 'Multi-threaded software available — loads when you compress'
+														: 'Single-threaded software (multi-core isn’t available here)'
 								}
 								logLines={logLines}
 							/>
