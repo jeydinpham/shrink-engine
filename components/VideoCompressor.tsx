@@ -9,13 +9,13 @@ import { compressVideo, CompressionPhase } from '@/lib/compressVideo';
 import { canUseMultiThreaded } from '@/lib/ffmpeg';
 import { canUseWebCodecs } from '@/lib/webCodecsCompress';
 
-type SizePreset = '8' | '25' | '50' | '100' | 'custom';
+type SizePreset = '10' | '20' | '50' | '100' | 'custom';
 
 type Phase = 'idle' | 'working' | 'done' | 'error';
 
 const PRESETS: { value: SizePreset; label: string }[] = [
-	{ value: '8', label: '8MB' },
-	{ value: '25', label: '25MB' },
+	{ value: '10', label: '10MB' },
+	{ value: '20', label: '20MB' },
 	{ value: '50', label: '50MB' },
 	{ value: '100', label: '100MB' },
 ];
@@ -47,14 +47,6 @@ function CheckCircleIcon({ className }: { className?: string }) {
 	);
 }
 
-function XIcon({ className }: { className?: string }) {
-	return (
-		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className={className}>
-			<path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-		</svg>
-	);
-}
-
 export function VideoCompressor() {
 	const [file, setFile] = useState<File | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
@@ -63,7 +55,7 @@ export function VideoCompressor() {
 	const [urlValue, setUrlValue] = useState('');
 	const [urlLoading, setUrlLoading] = useState(false);
 
-	const [sizePreset, setSizePreset] = useState<SizePreset>('8');
+	const [sizePreset, setSizePreset] = useState<SizePreset>('10');
 	const [customSizeMB, setCustomSizeMB] = useState('');
 
 	const [resolution, setResolution] = useState<Resolution>('original');
@@ -139,18 +131,6 @@ export function VideoCompressor() {
 		setFile(null);
 		resetResult();
 	}, [resetResult]);
-
-	const resultModalOpen = phase === 'done' && !!resultBlob && !!resultUrl;
-
-	// Let Escape close the result modal, matching click-outside/X behavior.
-	useEffect(() => {
-		if (!resultModalOpen) return;
-		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') dismissResult();
-		};
-		window.addEventListener('keydown', onKeyDown);
-		return () => window.removeEventListener('keydown', onKeyDown);
-	}, [resultModalOpen, dismissResult]);
 
 	const handleFile = useCallback(
 		(nextFile: File) => {
@@ -260,6 +240,7 @@ export function VideoCompressor() {
 
 	const showPercent = stage.startsWith('Encoding');
 	const reductionPct = file && resultBlob ? Math.max(0, Math.round((1 - resultBlob.size / file.size) * 100)) : null;
+	const showResult = phase === 'done' && !!resultBlob && !!resultUrl;
 
 	return (
 		<div className="w-full max-w-5xl mx-auto flex-1 flex flex-col">
@@ -295,66 +276,102 @@ export function VideoCompressor() {
 									isDragging ? 'border-primary bg-primary/5' : 'border-border'
 								}`}
 							>
-								{file ? (
+								{showResult ? (
 									<>
 										<CheckCircleIcon className="h-7 w-7 mx-auto mb-2 text-secondary-foreground" />
-										<p className="font-medium break-all text-foreground">{file.name}</p>
-										<p className="text-sm text-muted-foreground">{formatBytes(file.size)}</p>
+										{reductionPct !== null && (
+											<p className="font-display text-2xl font-semibold text-secondary-foreground">{reductionPct}% smaller</p>
+										)}
+										<p className="text-sm text-muted-foreground mt-1">
+											{formatBytes(resultBlob!.size)} (was {file ? formatBytes(file.size) : '?'}
+											{resultDuration != null ? `, ${formatDuration(resultDuration)}` : ''})
+										</p>
+										{sizeWarning && (
+											<p className="mt-2 text-xs text-yellow-500 max-w-xs mx-auto">
+												This target was very small for the video length &mdash; quality had to be reduced heavily to get close.
+											</p>
+										)}
+										<div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
+											<a
+												href={resultUrl!}
+												download={outputName}
+												className="px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
+											>
+												Download
+											</a>
+											<button
+												type="button"
+												onClick={dismissResult}
+												className="px-4 py-2 rounded-full bg-muted text-foreground text-sm font-semibold hover:bg-accent transition-colors"
+											>
+												Compress another
+											</button>
+										</div>
 									</>
 								) : (
 									<>
-										<UploadIcon className="h-7 w-7 mx-auto mb-2 text-muted-foreground" />
-										<p className="font-medium text-foreground">Drag &amp; drop a video</p>
-										<p className="text-sm text-muted-foreground">or choose a file below</p>
+										{file ? (
+											<>
+												<CheckCircleIcon className="h-7 w-7 mx-auto mb-2 text-secondary-foreground" />
+												<p className="font-medium break-all text-foreground">{file.name}</p>
+												<p className="text-sm text-muted-foreground">{formatBytes(file.size)}</p>
+											</>
+										) : (
+											<>
+												<UploadIcon className="h-7 w-7 mx-auto mb-2 text-muted-foreground" />
+												<p className="font-medium text-foreground">Drag &amp; drop a video</p>
+												<p className="text-sm text-muted-foreground">or choose a file below</p>
+											</>
+										)}
+
+										<div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
+											<input
+												ref={fileInputRef}
+												type="file"
+												accept={VIDEO_ACCEPT}
+												className="hidden"
+												onChange={(e) => {
+													const picked = e.target.files?.[0];
+													if (picked) handleFile(picked);
+													e.target.value = '';
+												}}
+											/>
+											<button
+												type="button"
+												onClick={() => fileInputRef.current?.click()}
+												className="px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+											>
+												Browse files
+											</button>
+											<button
+												type="button"
+												onClick={() => setShowUrlInput((v) => !v)}
+												className="text-sm text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary"
+											>
+												or paste a URL
+											</button>
+										</div>
+
+										{showUrlInput && (
+											<div className="flex gap-2 mt-4">
+												<input
+													type="url"
+													value={urlValue}
+													onChange={(e) => setUrlValue(e.target.value)}
+													placeholder="https://example.com/video.mp4"
+													className="flex-1 min-w-0 rounded-lg bg-background border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+												/>
+												<button
+													type="button"
+													onClick={onLoadUrl}
+													disabled={urlLoading || !urlValue.trim()}
+													className="px-3 py-2 rounded-lg bg-secondary text-secondary-foreground disabled:opacity-50 text-sm font-medium"
+												>
+													{urlLoading ? 'Loading…' : 'Load'}
+												</button>
+											</div>
+										)}
 									</>
-								)}
-
-								<div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
-									<input
-										ref={fileInputRef}
-										type="file"
-										accept={VIDEO_ACCEPT}
-										className="hidden"
-										onChange={(e) => {
-											const picked = e.target.files?.[0];
-											if (picked) handleFile(picked);
-											e.target.value = '';
-										}}
-									/>
-									<button
-										type="button"
-										onClick={() => fileInputRef.current?.click()}
-										className="px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
-									>
-										Browse files
-									</button>
-									<button
-										type="button"
-										onClick={() => setShowUrlInput((v) => !v)}
-										className="text-sm text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary"
-									>
-										or paste a URL
-									</button>
-								</div>
-
-								{showUrlInput && (
-									<div className="flex gap-2 mt-4">
-										<input
-											type="url"
-											value={urlValue}
-											onChange={(e) => setUrlValue(e.target.value)}
-											placeholder="https://example.com/video.mp4"
-											className="flex-1 min-w-0 rounded-lg bg-background border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-										/>
-										<button
-											type="button"
-											onClick={onLoadUrl}
-											disabled={urlLoading || !urlValue.trim()}
-											className="px-3 py-2 rounded-lg bg-secondary text-secondary-foreground disabled:opacity-50 text-sm font-medium"
-										>
-											{urlLoading ? 'Loading…' : 'Load'}
-										</button>
-									</div>
 								)}
 							</div>
 						</div>
@@ -403,31 +420,31 @@ export function VideoCompressor() {
 										{preset.label}
 									</button>
 								))}
-								<button
-									type="button"
-									onClick={() => setSizePreset('custom')}
-									className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+								{/* Custom is an inline pill-shaped input, not a toggle that reveals a
+								    separate field below — typing (or focusing) it just selects it. */}
+								<label
+									className={`flex items-center gap-1 rounded-full pl-4 pr-3 transition-colors ${
 										sizePreset === 'custom' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground hover:bg-accent'
 									}`}
 								>
-									Custom
-								</button>
-							</div>
-							{sizePreset === 'custom' && (
-								<div className="flex items-center gap-2 mt-3">
 									<input
 										type="number"
 										min="0"
 										step="0.1"
-										autoFocus
 										value={customSizeMB}
-										onChange={(e) => setCustomSizeMB(e.target.value)}
-										placeholder="e.g. 15"
-										className="w-24 rounded-lg bg-background border border-border px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+										onFocus={() => setSizePreset('custom')}
+										onChange={(e) => {
+											setSizePreset('custom');
+											setCustomSizeMB(e.target.value);
+										}}
+										placeholder="Custom"
+										className={`w-20 bg-transparent py-1.5 text-sm font-medium focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+											sizePreset === 'custom' ? 'placeholder:text-primary-foreground/70' : 'placeholder:text-foreground'
+										}`}
 									/>
-									<span className="text-sm text-muted-foreground">MB</span>
-								</div>
-							)}
+									<span className="text-xs opacity-70">MB</span>
+								</label>
+							</div>
 						</div>
 
 						<div className="space-y-3 pt-1 border-t border-border">
@@ -518,60 +535,6 @@ export function VideoCompressor() {
 					</div>
 				</div>
 			</div>
-
-			{resultModalOpen && (
-				<div
-					role="presentation"
-					onClick={dismissResult}
-					className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-				>
-					<div
-						role="dialog"
-						aria-modal="true"
-						aria-label="Compression result"
-						onClick={(e) => e.stopPropagation()}
-						className="relative w-full max-w-md rounded-2xl border border-secondary/50 bg-card shadow-2xl p-6 text-center"
-					>
-						<button
-							type="button"
-							onClick={dismissResult}
-							aria-label="Close"
-							className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
-						>
-							<XIcon className="h-5 w-5" />
-						</button>
-
-						{reductionPct !== null && (
-							<p className="font-display text-3xl font-semibold text-secondary-foreground">{reductionPct}% smaller</p>
-						)}
-						<p className="text-sm text-muted-foreground mt-1">
-							{formatBytes(resultBlob!.size)} (was {file ? formatBytes(file.size) : '?'}
-							{resultDuration != null ? `, ${formatDuration(resultDuration)}` : ''})
-						</p>
-						{sizeWarning && (
-							<p className="mt-2 text-xs text-yellow-500">
-								This target was very small for the video length &mdash; quality had to be reduced heavily to get close.
-							</p>
-						)}
-						<div className="mt-4 flex items-center justify-center gap-3">
-							<a
-								href={resultUrl!}
-								download={outputName}
-								className="px-5 py-2 rounded-full bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
-							>
-								Download
-							</a>
-							<button
-								type="button"
-								onClick={dismissResult}
-								className="px-5 py-2 rounded-full bg-muted text-foreground font-semibold hover:bg-accent transition-colors"
-							>
-								Compress another
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
 
 			{/* Footer */}
 			<p className="mt-auto pt-6 text-center text-xs font-mono text-muted-foreground">
