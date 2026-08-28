@@ -64,7 +64,7 @@ export function EngineStatus({ statusText, chips, logLines }: EngineStatusProps)
 
 	return (
 		<div className="flex flex-col">
-			<p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground mb-4">03 — engine status</p>
+			<p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground mb-3">03 — engine status</p>
 
 			<p className="text-sm text-foreground">
 				<span className="text-muted-foreground">Status: </span>
@@ -74,14 +74,18 @@ export function EngineStatus({ statusText, chips, logLines }: EngineStatusProps)
 			</p>
 
 			{/* The engine ladder: every engine that could run for this job, in
-			    fallback order, animating live as attempts actually happen. */}
-			<div className="mt-3 flex items-start">
+			    fallback order, animating live as attempts actually happen. Kept
+			    compact (small gaps, no extra padding) — the whole layout is
+			    tuned to fit one viewport without scrolling. */}
+			<div className="mt-2 flex items-start">
 				{chips.map((chip, i) => (
 					<React.Fragment key={chip.id}>
-						<div className="group relative flex flex-1 flex-col items-center gap-1.5 text-center cursor-default">
-							<span className={`h-3 w-3 rounded-full transition-all duration-300 ease-out ${DOT_CLASS[chip.state]}`} />
-							<span className={`text-xs transition-colors duration-300 ${LABEL_CLASS[chip.state]}`}>{chip.label}</span>
-							<span className={`text-[10px] uppercase tracking-wide transition-colors duration-300 ${SUB_CLASS[chip.state]}`}>
+						<div className="group relative flex flex-1 flex-col items-center gap-1 text-center cursor-default">
+							<span className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ease-out ${DOT_CLASS[chip.state]}`} />
+							<span className={`text-xs leading-none transition-colors duration-300 ${LABEL_CLASS[chip.state]}`}>{chip.label}</span>
+							<span
+								className={`text-[10px] leading-none uppercase tracking-wide transition-colors duration-300 ${SUB_CLASS[chip.state]}`}
+							>
 								{SUB_TEXT[chip.state]}
 							</span>
 
@@ -95,7 +99,7 @@ export function EngineStatus({ statusText, chips, logLines }: EngineStatusProps)
 
 						{i < chips.length - 1 && (
 							<div
-								className={`mt-[7px] h-px flex-1 max-w-8 transition-colors duration-500 ${
+								className={`mt-[5px] h-px flex-1 max-w-8 transition-colors duration-500 ${
 									CONNECTOR_LIT_STATES.includes(chip.state) ? 'bg-primary/50' : 'bg-border'
 								}`}
 							/>
@@ -104,7 +108,7 @@ export function EngineStatus({ statusText, chips, logLines }: EngineStatusProps)
 				))}
 			</div>
 
-			<div className="mt-3 h-56 shrink-0 overflow-y-auto rounded-lg bg-background border border-border p-2 font-mono text-[11px] text-muted-foreground leading-relaxed">
+			<div className="mt-2.5 h-44 shrink-0 overflow-y-auto rounded-lg bg-background border border-border p-2 font-mono text-[11px] text-muted-foreground leading-relaxed">
 				{logLines.length === 0 ? (
 					<p className="text-muted-foreground/60">No activity yet.</p>
 				) : (
