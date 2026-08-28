@@ -3,9 +3,10 @@ import { Disclosure } from './Disclosure';
 import { formatBytes, formatDuration } from '@/lib/format';
 import { looksLikeVideoFile, VIDEO_ACCEPT } from '@/lib/fileTypes';
 import { playCompletionSound } from '@/lib/sound';
-import { CompressOptions, Resolution } from '@/lib/compress';
-import { compressVideo, CompressionPhase } from '@/lib/runCompression';
+import { CompressOptions, EngineUsed, Resolution } from '@/lib/compress';
+import { compressVideo, CompressionPhase } from '@/lib/compressVideo';
 import { canUseMultiThreaded } from '@/lib/ffmpeg';
+import { canUseWebCodecs } from '@/lib/webCodecsCompress';
 
 type SizePreset = '8' | '25' | '50' | '100' | 'custom';
 
@@ -57,7 +58,8 @@ export function VideoCompressor() {
 	const [resultDuration, setResultDuration] = useState<number | null>(null);
 
 	const [multiThreadCapable, setMultiThreadCapable] = useState(false);
-	const [engineMode, setEngineMode] = useState<'unknown' | 'single' | 'multi'>('unknown');
+	const [webCodecsCapable, setWebCodecsCapable] = useState(false);
+	const [engineMode, setEngineMode] = useState<EngineUsed | 'unknown'>('unknown');
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const logEndRef = useRef<HTMLDivElement>(null);
@@ -65,6 +67,7 @@ export function VideoCompressor() {
 
 	useEffect(() => {
 		setMultiThreadCapable(canUseMultiThreaded());
+		setWebCodecsCapable(canUseWebCodecs());
 	}, []);
 
 	useEffect(() => {
@@ -166,7 +169,7 @@ export function VideoCompressor() {
 		setProgress(0);
 		setLogLines([]);
 		setPhase('working');
-		setStage('Loading engine (first time only, ~30MB)…');
+		setStage('Starting…');
 		autoDownloadedUrlRef.current = null;
 
 		try {
@@ -181,7 +184,7 @@ export function VideoCompressor() {
 
 			const result = await compressVideo(file, options, {
 				onLog: appendLog,
-				onEngineReady: (multiThreaded) => setEngineMode(multiThreaded ? 'multi' : 'single'),
+				onEngineReady: setEngineMode,
 				onPhase: (p) => {
 					setStage(STAGE_LABEL[p]);
 					setProgress(0);
@@ -505,13 +508,17 @@ export function VideoCompressor() {
 						</p>
 						<p className="text-sm">
 							<span className="text-gray-400">Engine: </span>
-							{engineMode === 'multi'
-								? 'multi-threaded (using multiple CPU cores)'
-								: engineMode === 'single'
-									? 'single-threaded'
-									: multiThreadCapable
-										? 'multi-threaded available, loads on first compress'
-										: 'single-threaded (multi-core unavailable in this context)'}
+							{engineMode === 'webcodecs'
+								? 'hardware-accelerated (WebCodecs)'
+								: engineMode === 'multi'
+									? 'multi-threaded (software, using multiple CPU cores)'
+									: engineMode === 'single'
+										? 'single-threaded (software)'
+										: webCodecsCapable
+											? 'hardware-accelerated available, used first on compress'
+											: multiThreadCapable
+												? 'multi-threaded software engine available, loads on first compress'
+												: 'single-threaded software engine (multi-core unavailable in this context)'}
 						</p>
 						<div className="h-32 overflow-y-auto rounded-md bg-black/60 border border-gray-800 p-2 font-mono text-[11px] text-gray-400 leading-relaxed">
 							{logLines.length === 0 ? (

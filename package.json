@@ -14,6 +14,7 @@
     "@ffmpeg/core-mt": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.10",
     "@ffmpeg/util": "^0.12.1",
+    "mediabunny": "^1.55.3",
     "next": "14.2.13",
     "react": "^18"
   },

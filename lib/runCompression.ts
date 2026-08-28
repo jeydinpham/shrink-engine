@@ -1,6 +1,6 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg';
 import { getFFmpeg, terminateMultiThreaded, LoadedEngine } from './ffmpeg';
-import { CompressOptions, buildScaleFilter, getFileExtension, planBitrate } from './compress';
+import { CompressOptions, EngineUsed, buildScaleFilter, getFileExtension, planBitrate } from './compress';
 import { probeVideo } from './probe';
 
 export interface CompressionResult {
@@ -18,7 +18,7 @@ export interface CompressionCallbacks {
 	/** progress in [0, 1] across the whole job */
 	onProgress?: (progress: number) => void;
 	/** Fires whenever an encode attempt starts, including the retry after a stall. */
-	onEngineReady?: (multiThreaded: boolean) => void;
+	onEngineReady?: (engine: EngineUsed) => void;
 }
 
 // Last-resort safety net in case a command hangs for a reason the stall
@@ -96,7 +96,7 @@ async function runPipeline(
 	watchdogMs: number | null
 ): Promise<CompressionResult> {
 	const { ffmpeg } = engine;
-	callbacks.onEngineReady?.(engine.multiThreaded);
+	callbacks.onEngineReady?.(engine.multiThreaded ? 'multi' : 'single');
 
 	const logHandler = callbacks.onLog ? ({ message }: { message: string }) => callbacks.onLog!(message) : null;
 	if (logHandler) ffmpeg.on('log', logHandler);
@@ -214,7 +214,8 @@ async function runPipeline(
 	}
 }
 
-export async function compressVideo(
+/** The ffmpeg.wasm pipeline: multi-threaded first (with a stall watchdog), falling back to single-threaded. */
+export async function compressWithFfmpeg(
 	file: File,
 	options: CompressOptions,
 	callbacks: CompressionCallbacks = {}

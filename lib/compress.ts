@@ -48,3 +48,6 @@ export function getFileExtension(filename: string): string {
 	const idx = filename.lastIndexOf('.');
 	return idx >= 0 ? filename.slice(idx) : '.mp4';
 }
+
+/** Which encoding backend actually ran a given compression job. */
+export type EngineUsed = 'webcodecs' | 'multi' | 'single';
