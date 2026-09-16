@@ -9,6 +9,8 @@ import { CompressOptions, EngineUsed, Resolution } from '@/lib/compress';
 import { compressVideo, CompressionPhase } from '@/lib/compressVideo';
 import { canUseMultiThreaded } from '@/lib/ffmpeg';
 import { canUseWebCodecs, probeWebCodecsDecode } from '@/lib/webCodecsCompress';
+import type { DecodeProbeResult } from '@/lib/webCodecsCompress';
+import { DiagnosticsPanel } from './DiagnosticsPanel';
 
 type SizePreset = '10' | '20' | '50' | '100' | 'custom';
 
@@ -123,6 +125,11 @@ export function VideoCompressor() {
 	// clears on every Compress press) instead of being logged once, pre-run,
 	// and then silently wiped before the user ever sees it.
 	const [webCodecsSkipReason, setWebCodecsSkipReason] = useState<string | null>(null);
+	// The probe's full structured result (timing, timeout vs. real rejection)
+	// kept around purely so the diagnostics panel can show more than the log
+	// line does — not used for any gating decision.
+	const [decodeProbeResult, setDecodeProbeResult] = useState<DecodeProbeResult | null>(null);
+	const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const autoDownloadedUrlRef = useRef<string | null>(null);
@@ -148,16 +155,21 @@ export function VideoCompressor() {
 		if (!file || !webCodecsCapable) {
 			setFileDecodeSupport(null);
 			setWebCodecsSkipReason(null);
+			setDecodeProbeResult(null);
 			return;
 		}
 		let cancelled = false;
 		setFileDecodeSupport('checking');
 		setWebCodecsSkipReason(null);
+		setDecodeProbeResult(null);
 		probeWebCodecsDecode(file, (message) => {
 			appendLog(message);
 			setWebCodecsSkipReason(message);
-		}).then((ok) => {
-			if (!cancelled) setFileDecodeSupport(ok ? 'supported' : 'unsupported');
+		}).then((result) => {
+			if (!cancelled) {
+				setFileDecodeSupport(result.ok ? 'supported' : 'unsupported');
+				setDecodeProbeResult(result);
+			}
 		});
 		return () => {
 			cancelled = true;
@@ -300,7 +312,11 @@ export function VideoCompressor() {
 
 			setResultBlob(result.blob);
 			setResultDuration(result.durationSeconds);
-			setSizeWarning(result.belowMinimum);
+			// The actual outcome the user cares about, not just the engine's own
+			// "I had to floor the bitrate" signal — a run that exhausts its
+			// size-fitting retries without ever hitting that floor should still
+			// warn, not silently hand back an oversized file.
+			setSizeWarning(result.sizeBytes > targetSizeMB * 1024 * 1024);
 			setPhase('done');
 			setStage('Ready');
 			if (playSound) playCompletionSound();
@@ -428,7 +444,8 @@ export function VideoCompressor() {
 										</p>
 										{sizeWarning && (
 											<p className="mt-2 text-xs text-yellow-500 max-w-xs mx-auto">
-												This target was very small for the video length &mdash; quality had to be reduced heavily to get close.
+												This came out larger than your target &mdash; the target was too small for this video even after
+												repeatedly reducing quality to try to fit it.
 											</p>
 										)}
 										<div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
@@ -523,6 +540,7 @@ export function VideoCompressor() {
 								}
 								chips={engineChips}
 								logLines={logLines}
+								onDiagnose={() => setDiagnosticsOpen(true)}
 							/>
 						</div>
 					</div>
@@ -671,6 +689,13 @@ export function VideoCompressor() {
 					</div>
 				</div>
 			</div>
+
+			<DiagnosticsPanel
+				open={diagnosticsOpen}
+				onClose={() => setDiagnosticsOpen(false)}
+				decodeProbe={decodeProbeResult}
+				fileDecodeSupport={fileDecodeSupport}
+			/>
 
 			<Modal open={howItWorksOpen} onClose={() => setHowItWorksOpen(false)} title="How this works">
 				<p>

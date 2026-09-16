@@ -11,7 +11,7 @@ export interface CompressOptions {
 }
 
 export const AUDIO_BITRATE_KBPS = 128;
-const MIN_VIDEO_BITRATE_KBPS = 80;
+export const MIN_VIDEO_BITRATE_KBPS = 80;
 // Leaves headroom for container/muxing overhead and estimation error so the
 // result lands under the target instead of slightly over it.
 const SAFETY_MARGIN = 0.96;

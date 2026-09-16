@@ -5,6 +5,7 @@ interface EngineStatusProps {
 	statusText: string;
 	chips: EngineChip[];
 	logLines: string[];
+	onDiagnose?: () => void;
 }
 
 const DOT_CLASS: Record<EngineChipState, string> = {
@@ -55,7 +56,7 @@ const CONNECTOR_LIT_STATES: EngineChipState[] = ['active', 'done', 'fellback'];
  * The log box is a fixed height and scrolls internally — it must NOT grow
  * with content, or a long-running job keeps expanding the whole panel.
  */
-export function EngineStatus({ statusText, chips, logLines }: EngineStatusProps) {
+export function EngineStatus({ statusText, chips, logLines, onDiagnose }: EngineStatusProps) {
 	const logEndRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -64,7 +65,18 @@ export function EngineStatus({ statusText, chips, logLines }: EngineStatusProps)
 
 	return (
 		<div className="flex flex-col">
-			<p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground mb-3">03 — engine status</p>
+			<div className="flex items-center justify-between mb-3">
+				<p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">03 — engine status</p>
+				{onDiagnose && (
+					<button
+						type="button"
+						onClick={onDiagnose}
+						className="text-[11px] text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary"
+					>
+						Diagnose hardware
+					</button>
+				)}
+			</div>
 
 			<p className="text-sm text-foreground">
 				<span className="text-muted-foreground">Status: </span>

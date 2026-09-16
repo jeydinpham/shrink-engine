@@ -1,13 +1,16 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg';
 import { getFFmpeg, terminateMultiThreaded, LoadedEngine } from './ffmpeg';
-import { CompressOptions, EngineUsed, buildScaleFilter, getFileExtension, planBitrate } from './compress';
+import { CompressOptions, EngineUsed, MIN_VIDEO_BITRATE_KBPS, buildScaleFilter, getFileExtension, planBitrate } from './compress';
 import { probeVideo } from './probe';
 
 export interface CompressionResult {
 	blob: Blob;
 	sizeBytes: number;
+	/** True when the target was unreachable even at the minimum viable bitrate — nothing more retrying can do. */
 	belowMinimum: boolean;
 	durationSeconds: number;
+	/** The video bitrate actually used to produce this result — lets a caller compute a smaller one for a retry. Not set by the WebCodecs path, which has no equivalent retry loop. */
+	videoBitrateKbps?: number;
 }
 
 export type CompressionPhase = 'probing' | 'encoding' | 'pass1' | 'pass2';
@@ -96,7 +99,9 @@ async function runPipeline(
 	file: File,
 	options: CompressOptions,
 	callbacks: CompressionCallbacks,
-	watchdogMs: number | null
+	watchdogMs: number | null,
+	/** Overrides planBitrate's own number — used by compressWithFfmpeg's size-retry loop to re-encode at a lower bitrate. */
+	videoBitrateOverrideKbps?: number
 ): Promise<CompressionResult> {
 	const { ffmpeg } = engine;
 	callbacks.onEngineReady?.(engine.multiThreaded ? 'multi' : 'single');
@@ -121,7 +126,14 @@ async function runPipeline(
 			throw new InputError('That trim range leaves little or no video to compress.');
 		}
 
-		const { videoBitrateKbps, audioBitrateKbps, belowMinimum } = planBitrate(effectiveDuration, options);
+		const planned = planBitrate(effectiveDuration, options);
+		const videoBitrateKbps = Math.max(videoBitrateOverrideKbps ?? planned.videoBitrateKbps, MIN_VIDEO_BITRATE_KBPS);
+		const audioBitrateKbps = planned.audioBitrateKbps;
+		// Recomputed rather than trusting planBitrate's own flag, since an
+		// override from the retry loop below is a different number than what
+		// planBitrate would have picked — floored means "this is as low as it
+		// can go," regardless of which path landed there.
+		const belowMinimum = videoBitrateKbps <= MIN_VIDEO_BITRATE_KBPS;
 		const scaleFilter = buildScaleFilter(options.resolution, height);
 		const vf = scaleFilter ? ['-vf', scaleFilter] : [];
 		const audioArgs = options.muteAudio ? ['-an'] : ['-c:a', 'aac', '-b:a', `${audioBitrateKbps}k`];
@@ -211,22 +223,22 @@ async function runPipeline(
 			)
 		);
 
-		return { blob, sizeBytes: blob.size, belowMinimum, durationSeconds: effectiveDuration };
+		return { blob, sizeBytes: blob.size, belowMinimum, durationSeconds: effectiveDuration, videoBitrateKbps };
 	} finally {
 		if (logHandler) ffmpeg.off('log', logHandler);
 	}
 }
 
-/** The ffmpeg.wasm pipeline: multi-threaded first (with a stall watchdog), falling back to single-threaded. */
-export async function compressWithFfmpeg(
+async function runAttempt(
 	file: File,
 	options: CompressOptions,
-	callbacks: CompressionCallbacks = {}
+	callbacks: CompressionCallbacks,
+	videoBitrateOverrideKbps: number | undefined
 ): Promise<CompressionResult> {
 	const engine = await getFFmpeg();
 
 	try {
-		return await runPipeline(engine, file, options, callbacks, engine.multiThreaded ? STALL_WATCHDOG_MS : null);
+		return await runPipeline(engine, file, options, callbacks, engine.multiThreaded ? STALL_WATCHDOG_MS : null, videoBitrateOverrideKbps);
 	} catch (err) {
 		// Only worth retrying on the reliable single-threaded engine if we
 		// were on multi-threaded AND the failure looks like an engine
@@ -240,6 +252,59 @@ export async function compressWithFfmpeg(
 		callbacks.onLog?.(`[app] ${reason} — switching to the single-threaded engine and retrying…`);
 		await terminateMultiThreaded();
 		const fallbackEngine = await getFFmpeg({ requireSingleThreaded: true });
-		return runPipeline(fallbackEngine, file, options, callbacks, null);
+		return runPipeline(fallbackEngine, file, options, callbacks, null, videoBitrateOverrideKbps);
 	}
+}
+
+// x264's single-pass rate control lands close to its target bitrate but
+// isn't exact, and "close" still isn't "at or under" — which is the whole
+// point of an app whose one job is hitting a target file size. Re-encoding
+// at a proportionally lower bitrate converges fast for real content (output
+// size scales close to linearly with bitrate), so a couple of retries
+// reliably lands at or under target without making every job pay the cost.
+const MAX_SIZE_RETRIES = 2;
+// Extra margin beyond the exact ratio the previous attempt implies, so a
+// retry doesn't just land back on the edge of the target after normal
+// encoder/rounding variance.
+const SIZE_RETRY_SAFETY = 0.95;
+
+/**
+ * The ffmpeg.wasm pipeline: multi-threaded first (with a stall watchdog),
+ * falling back to single-threaded. Also verifies the actual output size
+ * against the target and re-encodes at a lower bitrate if it's still over —
+ * see MAX_SIZE_RETRIES above.
+ */
+export async function compressWithFfmpeg(
+	file: File,
+	options: CompressOptions,
+	callbacks: CompressionCallbacks = {}
+): Promise<CompressionResult> {
+	const targetBytes = options.targetSizeMB * 1024 * 1024;
+	let bitrateOverrideKbps: number | undefined;
+	let result: CompressionResult | null = null;
+
+	for (let attempt = 0; attempt <= MAX_SIZE_RETRIES; attempt++) {
+		result = await runAttempt(file, options, callbacks, bitrateOverrideKbps);
+
+		if (result.sizeBytes <= targetBytes || result.belowMinimum || attempt === MAX_SIZE_RETRIES) {
+			return result;
+		}
+
+		// runAttempt always resolves via runPipeline (this module), which always sets this field.
+		const nextBitrateKbps = Math.max(
+			MIN_VIDEO_BITRATE_KBPS,
+			Math.floor(result.videoBitrateKbps! * (targetBytes / result.sizeBytes) * SIZE_RETRY_SAFETY)
+		);
+		if (bitrateOverrideKbps !== undefined && nextBitrateKbps >= bitrateOverrideKbps) {
+			// Already retried at this bitrate (or lower) with no improvement — a further attempt wouldn't help either.
+			return result;
+		}
+
+		callbacks.onLog?.(
+			`[app] Output was ${(result.sizeBytes / 1024 / 1024).toFixed(1)}MB, over the ${options.targetSizeMB}MB target — re-encoding at a lower bitrate (~${nextBitrateKbps}kbps) to fit (attempt ${attempt + 2}/${MAX_SIZE_RETRIES + 1})…`
+		);
+		bitrateOverrideKbps = nextBitrateKbps;
+	}
+
+	return result!;
 }
