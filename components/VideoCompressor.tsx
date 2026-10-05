@@ -392,20 +392,31 @@ export function VideoCompressor() {
 	});
 
 	return (
-		<div className="w-full max-w-5xl mx-auto flex-1 flex flex-col">
-			{/* Hero */}
-			<div className="mb-6 max-w-2xl">
-				<h1 className="font-display text-3xl md:text-5xl font-semibold tracking-tight text-foreground mb-3">
-					shrink your videos.
+		<div className="w-full max-w-6xl mx-auto flex-1 flex flex-col">
+			{/* Hero: the portfolio's eyebrow, giant uppercase display headline and intro */}
+			<div className="mb-10 md:mb-14">
+				<p className="mono !text-ink flex items-center gap-2.5 animate-rise">
+					<span className="eyebrow-dot" aria-hidden="true" />
+					Runs entirely in your browser
+				</p>
+				<h1
+					className="mt-5 font-display font-black uppercase leading-[0.84] tracking-[-0.01em] text-ink text-[clamp(56px,10vw,150px)] animate-rise"
+					style={{ '--d': '80ms' } as React.CSSProperties}
+				>
+					Shrink your <em className="not-italic text-accent">videos.</em>
 				</h1>
-				<p className="text-muted-foreground text-sm md:text-base">
-					Got a video that’s too big to send? Drop it in, tell it how small it needs to be, and it’ll shrink itself
-					right here in your browser &mdash; nothing gets uploaded anywhere.
+				<p
+					className="mt-5 max-w-[46ch] text-ink-2 text-[clamp(17px,1.45vw,20px)] leading-[1.45] animate-rise"
+					style={{ '--d': '160ms' } as React.CSSProperties}
+				>
+					Got a video that&rsquo;s too big to send? Drop it in, tell it how small it needs to be, and it&rsquo;ll shrink
+					itself right here &mdash; nothing gets uploaded anywhere.
 				</p>
 				<button
 					type="button"
 					onClick={() => setHowItWorksOpen(true)}
-					className="mt-2 text-sm text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary"
+					className="link mt-4 text-[15px] animate-rise"
+					style={{ '--d': '220ms' } as React.CSSProperties}
 				>
 					How does this work?
 				</button>
@@ -414,12 +425,15 @@ export function VideoCompressor() {
 			{/* One unified panel: video + engine status on the left, settings on the right,
 			    divided by hairlines instead of separate floating cards — the two sides
 			    are always the same height since they're one grid row. */}
-			<div className="rounded-2xl border border-border bg-card shadow-xl shadow-black/20 overflow-hidden">
+			<div
+				className="rounded-md border border-faint bg-bg-2 overflow-hidden animate-rise"
+				style={{ '--d': '300ms' } as React.CSSProperties}
+			>
 				<div className="grid md:grid-cols-[1.4fr_1fr]">
 					{/* left: your video + engine status */}
-					<div className="flex flex-col border-b md:border-b-0 md:border-r border-border">
-						<div className="p-5 md:p-6 border-b border-border">
-							<p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground mb-4">01 — your video</p>
+					<div className="flex flex-col border-b md:border-b-0 md:border-r border-faint">
+						<div className="p-5 md:p-7 border-b border-faint">
+							<SectionLabel index="01" title="Your video" />
 
 							<div
 								onDragOver={(e) => {
@@ -428,39 +442,32 @@ export function VideoCompressor() {
 								}}
 								onDragLeave={() => setIsDragging(false)}
 								onDrop={onDrop}
-								className={`rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
-									isDragging ? 'border-primary bg-primary/5' : 'border-border'
+								className={`rounded-md border border-dashed px-6 py-8 text-center transition-colors duration-300 ${
+									isDragging ? 'border-accent bg-accent/5' : 'border-faint hover:border-dim'
 								}`}
 							>
 								{showResult ? (
 									<div key="result" className="animate-fade-in">
-										<CheckCircleIcon className="h-7 w-7 mx-auto mb-2 text-secondary-foreground" />
 										{reductionPct !== null && (
-											<p className="font-display text-2xl font-semibold text-secondary-foreground">{reductionPct}% smaller</p>
+											<p className="font-display font-black uppercase leading-[0.86] text-[clamp(48px,6vw,80px)] text-ink">
+												<span className="text-accent">{reductionPct}%</span> smaller
+											</p>
 										)}
-										<p className="text-sm text-muted-foreground mt-1">
-											{formatBytes(resultBlob!.size)} (was {file ? formatBytes(file.size) : '?'}
-											{resultDuration != null ? `, ${formatDuration(resultDuration)}` : ''})
+										<p className="mono mt-3">
+											{formatBytes(resultBlob!.size)} &middot; was {file ? formatBytes(file.size) : '?'}
+											{resultDuration != null ? ` · ${formatDuration(resultDuration)}` : ''}
 										</p>
 										{sizeWarning && (
-											<p className="mt-2 text-xs text-yellow-500 max-w-xs mx-auto">
+											<p className="mt-3 text-sm text-accent-2 max-w-xs mx-auto">
 												This came out larger than your target &mdash; the target was too small for this video even after
 												repeatedly reducing quality to try to fit it.
 											</p>
 										)}
-										<div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
-											<a
-												href={resultUrl!}
-												download={outputName}
-												className="px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
-											>
-												Download
+										<div className="mt-6 flex items-center justify-center gap-2.5 flex-wrap">
+											<a href={resultUrl!} download={outputName} className="btn btn-primary">
+												Download <span className="arrow">&darr;</span>
 											</a>
-											<button
-												type="button"
-												onClick={dismissResult}
-												className="px-4 py-2 rounded-full bg-muted text-foreground text-sm font-semibold hover:bg-accent transition-colors"
-											>
+											<button type="button" onClick={dismissResult} className="btn">
 												Compress another
 											</button>
 										</div>
@@ -469,19 +476,21 @@ export function VideoCompressor() {
 									<>
 										{file ? (
 											<div key="file" className="animate-fade-in">
-												<CheckCircleIcon className="h-7 w-7 mx-auto mb-2 text-secondary-foreground" />
-												<p className="font-medium break-all text-foreground">{file.name}</p>
-												<p className="text-sm text-muted-foreground">{formatBytes(file.size)}</p>
+												<CheckCircleIcon className="h-7 w-7 mx-auto mb-3 text-accent" />
+												<p className="font-medium break-all text-ink">{file.name}</p>
+												<p className="mono mt-1.5">{formatBytes(file.size)}</p>
 											</div>
 										) : (
 											<>
-												<UploadIcon className="h-7 w-7 mx-auto mb-2 text-muted-foreground" />
-												<p className="font-medium text-foreground">Drag &amp; drop a video</p>
-												<p className="text-sm text-muted-foreground">or choose a file below</p>
+												<UploadIcon className="h-7 w-7 mx-auto mb-3 text-dim" />
+												<p className="font-display text-[34px] font-extrabold uppercase leading-none tracking-[0.01em] text-ink">
+													Drop a video here
+												</p>
+												<p className="text-sm text-dim mt-2">or choose a file below</p>
 											</>
 										)}
 
-										<div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
+										<div className="mt-5 flex items-center justify-center gap-4 flex-wrap">
 											<input
 												ref={fileInputRef}
 												type="file"
@@ -493,36 +502,28 @@ export function VideoCompressor() {
 													e.target.value = '';
 												}}
 											/>
-											<button
-												type="button"
-												onClick={() => fileInputRef.current?.click()}
-												className="px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
-											>
+											<button type="button" onClick={() => fileInputRef.current?.click()} className="btn">
 												Browse files
 											</button>
-											<button
-												type="button"
-												onClick={() => setShowUrlInput((v) => !v)}
-												className="text-sm text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary"
-											>
+											<button type="button" onClick={() => setShowUrlInput((v) => !v)} className="link text-sm">
 												or paste a URL
 											</button>
 										</div>
 
 										{showUrlInput && (
-											<div className="flex gap-2 mt-4">
+											<div className="flex gap-2 mt-5 animate-fade-in">
 												<input
 													type="url"
 													value={urlValue}
 													onChange={(e) => setUrlValue(e.target.value)}
 													placeholder="https://example.com/video.mp4"
-													className="flex-1 min-w-0 rounded-lg bg-background border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+													className="field flex-1 min-w-0 px-3 py-2"
 												/>
 												<button
 													type="button"
 													onClick={onLoadUrl}
 													disabled={urlLoading || !urlValue.trim()}
-													className="px-3 py-2 rounded-lg bg-secondary text-secondary-foreground disabled:opacity-50 text-sm font-medium"
+													className="btn !py-2 !px-4 text-sm"
 												>
 													{urlLoading ? 'Loading…' : 'Load'}
 												</button>
@@ -533,7 +534,7 @@ export function VideoCompressor() {
 							</div>
 						</div>
 
-						<div className="p-5 md:p-6 flex-1 flex flex-col">
+						<div className="p-5 md:p-7 flex-1 flex flex-col">
 							<EngineStatus
 								statusText={
 									phase === 'working' ? stage : phase === 'done' ? 'Ready' : phase === 'error' ? 'Idle' : 'Not loaded'
@@ -546,21 +547,22 @@ export function VideoCompressor() {
 					</div>
 
 					{/* right: settings */}
-					<div className="p-5 md:p-6 flex flex-col space-y-5">
-						<p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">02 — settings</p>
+					<div className="p-5 md:p-7 flex flex-col">
+						<SectionLabel index="02" title="Settings" />
 
 						<div>
-							<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Target size</p>
+							<p className="mono mb-3">Target size</p>
 							<div className="flex flex-wrap gap-2">
 								{PRESETS.map((preset) => (
 									<button
 										key={preset.value}
 										type="button"
 										onClick={() => setSizePreset(preset.value)}
-										className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+										aria-pressed={sizePreset === preset.value}
+										className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors duration-300 ${
 											sizePreset === preset.value
-												? 'bg-primary text-primary-foreground scale-105'
-												: 'bg-muted text-foreground hover:bg-accent'
+												? 'bg-accent border-accent text-on-accent'
+												: 'border-faint text-ink hover:border-ink'
 										}`}
 									>
 										{preset.label}
@@ -569,10 +571,10 @@ export function VideoCompressor() {
 								{/* Custom is an inline pill-shaped input, not a toggle that reveals a
 								    separate field below — typing (or focusing) it just selects it. */}
 								<label
-									className={`flex items-center gap-1 rounded-full pl-4 pr-3 transition-all duration-200 ${
+									className={`flex items-center gap-1 rounded-full border pl-4 pr-3 transition-colors duration-300 ${
 										sizePreset === 'custom'
-											? 'bg-primary text-primary-foreground scale-105'
-											: 'bg-muted text-foreground hover:bg-accent'
+											? 'bg-accent border-accent text-on-accent'
+											: 'border-faint text-ink hover:border-ink'
 									}`}
 								>
 									<input
@@ -586,8 +588,8 @@ export function VideoCompressor() {
 											setCustomSizeMB(e.target.value);
 										}}
 										placeholder="Custom"
-										className={`w-20 bg-transparent py-1.5 text-sm font-medium focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-											sizePreset === 'custom' ? 'placeholder:text-primary-foreground/70' : 'placeholder:text-foreground'
+										className={`w-20 bg-transparent py-2 text-sm font-medium focus:outline-none focus-visible:!outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+											sizePreset === 'custom' ? 'placeholder:text-on-accent/60' : 'placeholder:text-ink'
 										}`}
 									/>
 									<span className="text-xs opacity-70">MB</span>
@@ -595,8 +597,8 @@ export function VideoCompressor() {
 							</div>
 						</div>
 
-						<div className="space-y-3 pt-1 border-t border-border">
-							<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-3">Options</p>
+						<div className="mt-6 pt-5 border-t border-faint space-y-4">
+							<p className="mono">Options</p>
 
 							<Switch checked={muteAudio} onChange={setMuteAudio} label="Remove all sound" description="Mutes the output entirely" />
 
@@ -615,14 +617,14 @@ export function VideoCompressor() {
 									description="Cut time off the start and/or end"
 								/>
 								{trimEnabled && (
-									<div className="flex items-center gap-2 flex-wrap text-sm text-muted-foreground mt-3 pl-1">
+									<div className="flex items-center gap-2 flex-wrap text-sm text-dim mt-3 animate-fade-in">
 										<span>Skip first</span>
 										<input
 											type="number"
 											min="0"
 											value={trimStart}
 											onChange={(e) => setTrimStart(e.target.value)}
-											className="w-16 rounded-lg bg-background border border-border px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+											className="field w-16 px-2 py-1"
 										/>
 										<span>sec &middot; last</span>
 										<input
@@ -630,7 +632,7 @@ export function VideoCompressor() {
 											min="0"
 											value={trimEnd}
 											onChange={(e) => setTrimEnd(e.target.value)}
-											className="w-16 rounded-lg bg-background border border-border px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+											className="field w-16 px-2 py-1"
 										/>
 										<span>sec</span>
 									</div>
@@ -641,14 +643,14 @@ export function VideoCompressor() {
 							<Switch checked={autoDownload} onChange={setAutoDownload} label="Auto download when done" />
 
 							<div className="flex items-center justify-between gap-4">
-								<label htmlFor="resolution" className="text-sm text-foreground">
+								<label htmlFor="resolution" className="text-[15px] text-ink">
 									Resolution
 								</label>
 								<select
 									id="resolution"
 									value={resolution}
 									onChange={(e) => setResolution(e.target.value as Resolution)}
-									className="rounded-lg bg-background border border-border px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+									className="field px-2 py-1.5"
 								>
 									<option value="original">Original</option>
 									<option value="1080">1080p</option>
@@ -659,32 +661,39 @@ export function VideoCompressor() {
 							</div>
 						</div>
 
-						<div className="pt-1 border-t border-border mt-auto">
-							<button
-								type="button"
-								onClick={handleCompress}
-								disabled={!file || !isValidTargetSize || isProcessing || fileDecodeSupport === 'checking' || phase === 'done'}
-								className="mt-3 w-full py-3 rounded-full bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-lg hover:opacity-90 transition-opacity"
-							>
-								{isProcessing
-									? `${stage}${showPercent ? ` ${Math.round(progress * 100)}%` : ''}`
-									: phase === 'done'
-										? 'Compressed ✓'
-										: fileDecodeSupport === 'checking'
-											? 'Checking video…'
-											: 'Compress'}
-							</button>
+						<div className="mt-auto pt-6">
+							<div className="border-t border-faint pt-5">
+								<button
+									type="button"
+									onClick={handleCompress}
+									disabled={!file || !isValidTargetSize || isProcessing || fileDecodeSupport === 'checking' || phase === 'done'}
+									className="btn btn-primary w-full !py-4 !text-base !font-semibold"
+								>
+									{isProcessing ? (
+										`${stage}${showPercent ? ` ${Math.round(progress * 100)}%` : ''}`
+									) : phase === 'done' ? (
+										'Compressed ✓'
+									) : fileDecodeSupport === 'checking' ? (
+										'Checking video…'
+									) : (
+										<>
+											Compress <span className="arrow">&rarr;</span>
+										</>
+									)}
+								</button>
 
-							{isProcessing && (
-								<div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-									<div
-										className="h-full bg-primary transition-all duration-200"
-										style={{ width: `${Math.round(progress * 100)}%` }}
-									/>
-								</div>
-							)}
+								{/* the portfolio's scroll-progress bar, as the encode's progress */}
+								{isProcessing && (
+									<div className="mt-4 h-0.5 w-full bg-faint overflow-hidden">
+										<div
+											className="h-full bg-accent origin-left transition-transform duration-200"
+											style={{ transform: `scaleX(${progress})` }}
+										/>
+									</div>
+								)}
 
-							{errorMessage && <p className="mt-4 text-sm text-red-400 text-center animate-fade-in">{errorMessage}</p>}
+								{errorMessage && <p className="mt-4 text-sm text-danger text-center animate-fade-in">{errorMessage}</p>}
+							</div>
 						</div>
 					</div>
 				</div>
@@ -703,26 +712,21 @@ export function VideoCompressor() {
 					nothing to wait on and nothing to trust with your files.
 				</p>
 				<div>
-					<p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground mb-1.5">Two engines</p>
+					<p className="mono !text-ink mb-2">Two engines</p>
 					<p>
 						When your browser supports it, compression runs through{' '}
 						<a
 							href="https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API"
 							target="_blank"
 							rel="noopener noreferrer"
-							className="font-medium text-primary hover:underline underline-offset-4"
+							className="link"
 						>
 							WebCodecs
 						</a>
 						, a browser API that taps into your device&rsquo;s actual hardware video encoder &mdash; dedicated silicon
 						built for exactly this, giving you the same kind of speed you&rsquo;d get from a native app. Getting there
 						relies on{' '}
-						<a
-							href="https://github.com/Vanilagy/mediabunny"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="font-medium text-primary hover:underline underline-offset-4"
-						>
+						<a href="https://github.com/Vanilagy/mediabunny" target="_blank" rel="noopener noreferrer" className="link">
 							mediabunny
 						</a>{' '}
 						to handle the demuxing/muxing around it.
@@ -730,12 +734,7 @@ export function VideoCompressor() {
 					<p className="mt-2">
 						If that&rsquo;s not available (or it can&rsquo;t decode/encode this particular video), it falls back to a
 						WebAssembly build of{' '}
-						<a
-							href="https://ffmpeg.org/"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="font-medium text-primary hover:underline underline-offset-4"
-						>
+						<a href="https://ffmpeg.org/" target="_blank" rel="noopener noreferrer" className="link">
 							ffmpeg
 						</a>{' '}
 						doing all the video math in JavaScript on your CPU instead. It works in almost any browser, but with no
@@ -744,7 +743,7 @@ export function VideoCompressor() {
 					</p>
 				</div>
 				<div>
-					<p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground mb-1.5">Speed depends on your device</p>
+					<p className="mono !text-ink mb-2">Speed depends on your device</p>
 					<p>
 						Since software encoding runs on your CPU with no hardware to lean on, it scales directly with how strong
 						your device is &mdash; a fast desktop chews through a video in seconds, while an older or weaker machine
@@ -760,27 +759,36 @@ export function VideoCompressor() {
 				</div>
 			</Modal>
 
-			{/* Footer */}
-			<p className="mt-auto pt-6 text-center text-xs font-mono text-muted-foreground">
-				built by{' '}
-				<a
-					href="https://jeydinpham.com"
-					target="_blank"
-					rel="noopener noreferrer"
-					className="text-primary hover:underline underline-offset-4"
-				>
-					Jeydin Pham
-				</a>{' '}
-				&middot;{' '}
-				<a
-					href="https://github.com/jeydinpham/shrink-engine"
-					target="_blank"
-					rel="noopener noreferrer"
-					className="text-primary hover:underline underline-offset-4"
-				>
-					source on GitHub
-				</a>
-			</p>
+			{/* Footer: the portfolio's slim bar */}
+			<footer className="mt-auto pt-16">
+				<div className="flex flex-wrap items-center justify-between gap-3 border-t border-faint py-5">
+					<p className="mono">
+						Built by{' '}
+						<a href="https://jeydinpham.com" target="_blank" rel="noopener noreferrer" className="link !text-ink">
+							Jeydin Pham
+						</a>
+					</p>
+					<a
+						href="https://github.com/jeydinpham/shrink-engine"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="mono link !text-dim hover:!text-accent"
+					>
+						Source on GitHub &rarr;
+					</a>
+				</div>
+			</footer>
 		</div>
+	);
+}
+
+/** A panel section header: a mono index and title, like the portfolio's section labels. */
+function SectionLabel({ index, title }: { index: string; title: string }) {
+	return (
+		<p className="mono mb-5 flex items-center gap-3">
+			<span className="text-accent">{index}</span>
+			<span className="h-px w-6 bg-faint" aria-hidden="true" />
+			<span className="text-ink">{title}</span>
+		</p>
 	);
 }

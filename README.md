@@ -38,7 +38,7 @@ Speed scales with your device: software encoding runs on your CPU with no dedica
 ### Front-end
 - [React](https://react.dev/) + [Next.js](https://nextjs.org/) (Pages Router)
 - [Tailwind CSS](https://tailwindcss.com/), themed to match [jeydinpham.com](https://jeydinpham.com)
-- [Geist Sans / Geist Mono](https://vercel.com/font) + [Bricolage Grotesque](https://fonts.google.com/specimen/Bricolage+Grotesque) for typography
+- [Big Shoulders](https://fonts.google.com/specimen/Big+Shoulders), [Hanken Grotesk](https://fonts.google.com/specimen/Hanken+Grotesk) and [Martian Mono](https://fonts.google.com/specimen/Martian+Mono), the same type as jeydinpham.com, with its dark and light themes
 - [`mediabunny`](https://mediabunny.dev) for WebCodecs-based demuxing/muxing/encoding
 - [ffmpeg.wasm](https://ffmpegwasm.netlify.app/) for the software fallback encoder
 

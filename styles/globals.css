@@ -2,57 +2,221 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Self-hosted Geist Sans/Mono (see lib/fonts.ts for why this is plain
-   @font-face instead of next/font/local). Files copied from the official
-   `geist` npm package. */
-@font-face {
-	font-family: 'Geist';
-	src: url('/fonts/Geist-Variable.woff2') format('woff2');
-	font-weight: 100 900;
-	font-style: normal;
-	font-display: swap;
-}
-
-@font-face {
-	font-family: 'Geist Mono';
-	src: url('/fonts/GeistMono-Variable.woff2') format('woff2');
-	font-weight: 100 900;
-	font-style: normal;
-	font-display: swap;
-}
-
 /*
- * Palette ported 1:1 from jeydinpham.com's dark theme (warm near-black
- * background, peach/amber primary, sage-green secondary) so this tool reads
- * as part of the same site.
- */
-/*
- * Colors below are stored as bare components (no oklch()/rgb() wrapper) so
- * tailwind.config.ts can wrap each one with its own color function plus the
- * `<alpha-value>` placeholder — the pattern Tailwind needs to support opacity
- * modifiers (bg-primary/70, etc.) on these custom theme colors. Anywhere
- * these vars are used directly in this file (not via a Tailwind class), they
- * need the same oklch(...)/rgb(...) wrapper applied explicitly.
+ * jeydinpham.com's design system: warm near-black with cream ink and one
+ * orange accent, dark by default with a warm-paper light theme
+ * (html[data-theme=light], toggled in the top bar). Stored as bare RGB
+ * components so tailwind.config.ts can add opacity modifiers; anywhere they're
+ * used directly in this file they need an rgb(...) wrapper.
  */
 :root {
-	--font-geist-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
-	--font-geist-mono: 'Geist Mono', ui-monospace, monospace;
-	--background: 16.5% .018 50;
-	--foreground: 94.6% .011 70;
-	--card: 24% .021 50;
-	--card-foreground: 94.6% .011 70;
-	--primary: 253 186 116; /* was #fdba74 */
-	--primary-foreground: 63 31 9; /* was #3f1f09 */
-	--secondary: 29.5% .045 124;
-	--secondary-foreground: 91.5% .075 124;
-	--muted: 28% .021 50;
-	--muted-foreground: 75% .018 60;
-	--accent: 32% .023 50;
-	--accent-foreground: 94.6% .011 70;
-	--border: 34% .025 50;
-	--input: 41% .02 55;
-	--ring: 253 186 116; /* was #fdba74, same as --primary */
-	--radius: 0.625rem;
+	--bg: 14 12 10; /* #0E0C0A */
+	--bg-2: 23 20 17; /* #171411 */
+	--ink: 242 234 223; /* #F2EADF */
+	--ink-2: 207 197 184; /* #CFC5B8 */
+	--dim: 138 127 114; /* #8A7F72 */
+	--faint: 58 52 46; /* #3A342E */
+	--accent: 255 122 47; /* #FF7A2F */
+	--accent-2: 255 179 107; /* #FFB36B */
+	--danger: 255 107 90;
+	color-scheme: dark;
+}
+/* light theme: warm paper, dark ink, a deeper orange so it holds contrast */
+:root[data-theme='light'] {
+	--bg: 243 237 228; /* #F3EDE4 */
+	--bg-2: 233 225 213; /* #E9E1D5 */
+	--ink: 27 22 18; /* #1B1612 */
+	--ink-2: 74 64 56; /* #4A4038 */
+	--dim: 122 109 96; /* #7A6D60 */
+	--faint: 214 203 188; /* #D6CBBC */
+	--accent: 224 89 12; /* #E0590C */
+	--accent-2: 255 122 47; /* #FF7A2F */
+	--danger: 190 48 30;
+	color-scheme: light;
+}
+
+html,
+body {
+	background: rgb(var(--bg));
+}
+body {
+	margin: 0;
+	color: rgb(var(--ink));
+	font: 400 16px/1.55 var(--font-body), 'Segoe UI', system-ui, sans-serif;
+	-webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+	/* the site's label voice: tiny, narrowed, uppercase mono */
+	.mono {
+		font: 400 11px/1.4 var(--font-mono), ui-monospace, Menlo, monospace;
+		font-stretch: 87.5%;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: rgb(var(--dim));
+	}
+
+	/* pill buttons: a faint outline that firms up to ink on hover; .btn-primary is the solid accent */
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		font-weight: 500;
+		font-size: 15px;
+		line-height: 1;
+		padding: 13px 20px;
+		border-radius: 999px;
+		border: 1px solid rgb(var(--faint));
+		background: rgb(var(--bg) / 0.7);
+		color: rgb(var(--ink));
+		text-decoration: none;
+		transition:
+			border-color 0.3s ease-in-out,
+			background 0.3s ease-in-out,
+			color 0.3s ease-in-out,
+			opacity 0.3s ease-in-out;
+	}
+	.btn:hover:not(:disabled) {
+		border-color: rgb(var(--ink));
+	}
+	.btn-primary {
+		background: rgb(var(--accent));
+		border-color: rgb(var(--accent));
+		color: #1a0f08;
+	}
+	.btn-primary:hover:not(:disabled) {
+		background: rgb(var(--accent-2));
+		border-color: rgb(var(--accent-2));
+	}
+	.btn:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+	/* the arrow in a button nudges right on hover */
+	.btn .arrow {
+		transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.2, 1);
+	}
+	.btn:hover:not(:disabled) .arrow {
+		transform: translateX(3px);
+	}
+
+	/* text links: the navbar underline — draws in from the left on hover and leaves to the right */
+	.link {
+		color: rgb(var(--accent));
+		text-decoration: none;
+		background: linear-gradient(currentColor, currentColor) no-repeat 100% 100% / 0 1px;
+		transition:
+			background-size 0.35s cubic-bezier(0.65, 0, 0.35, 1),
+			color 0.3s ease-in-out;
+	}
+	.link:hover,
+	.link:focus-visible {
+		background-size: 100% 1px;
+		background-position: 0 100%;
+	}
+
+	/* form fields */
+	.field {
+		border-radius: 4px;
+		border: 1px solid rgb(var(--faint));
+		background: rgb(var(--bg));
+		color: rgb(var(--ink));
+		font-size: 14px;
+		transition: border-color 0.3s ease-in-out;
+	}
+	.field:hover {
+		border-color: rgb(var(--dim));
+	}
+	.field:focus {
+		outline: none;
+		border-color: rgb(var(--accent));
+	}
+}
+
+/* theme toggle (ThemeToggle.tsx): a sun in dark mode, a moon in light mode */
+.theme-toggle {
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	background: none;
+	border: 0;
+	color: rgb(var(--ink));
+	opacity: 0.85;
+	cursor: pointer;
+	transition:
+		opacity 0.3s ease-in-out,
+		transform 0.4s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.theme-toggle:hover,
+.theme-toggle:focus-visible {
+	opacity: 1;
+	transform: rotate(20deg);
+}
+.theme-toggle .sun {
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	background: currentColor;
+	box-shadow:
+		0 -7px 0 -3px currentColor,
+		0 7px 0 -3px currentColor,
+		7px 0 0 -3px currentColor,
+		-7px 0 0 -3px currentColor,
+		5px 5px 0 -3px currentColor,
+		-5px -5px 0 -3px currentColor,
+		5px -5px 0 -3px currentColor,
+		-5px 5px 0 -3px currentColor;
+}
+.theme-toggle .moon {
+	width: 13px;
+	height: 13px;
+	border-radius: 50%;
+	box-shadow: inset -4px -2px 0 0 currentColor;
+}
+/* the theme switch sweeps diagonally across the screen (light from the bottom
+   right, dark from the top left), same as the portfolio */
+::view-transition-group(root) {
+	animation-duration: 0.7s;
+	animation-timing-function: ease;
+}
+::view-transition-old(root) {
+	animation: none;
+	z-index: -1;
+}
+::view-transition-new(root) {
+	animation-name: reveal-light;
+}
+:root:not([data-theme='light'])::view-transition-new(root) {
+	animation-name: reveal-dark;
+}
+@keyframes reveal-dark {
+	from {
+		clip-path: polygon(50% -71%, -50% 71%, -50% 71%, 50% -71%);
+	}
+	to {
+		clip-path: polygon(50% -71%, -50% 71%, 50% 171%, 171% 50%);
+	}
+}
+@keyframes reveal-light {
+	from {
+		clip-path: polygon(171% 50%, 50% 171%, 50% 171%, 171% 50%);
+	}
+	to {
+		clip-path: polygon(171% 50%, 50% 171%, -50% 71%, 50% -71%);
+	}
+}
+
+/* the eyebrow's live dot */
+.eyebrow-dot {
+	display: inline-block;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: rgb(var(--accent));
+	box-shadow: 0 0 0 4px rgb(var(--accent) / 0.2);
 }
 
 /* Small motion vocabulary used throughout the compressor UI so stateful
@@ -61,10 +225,10 @@
 @keyframes pulse-glow {
 	0%,
 	100% {
-		box-shadow: 0 0 0 0 color-mix(in oklab, rgb(var(--primary)) 55%, transparent);
+		box-shadow: 0 0 0 0 rgb(var(--accent) / 0.55);
 	}
 	50% {
-		box-shadow: 0 0 0 5px color-mix(in oklab, rgb(var(--primary)) 0%, transparent);
+		box-shadow: 0 0 0 5px rgb(var(--accent) / 0);
 	}
 }
 
@@ -88,6 +252,18 @@
 	}
 }
 
+/* content rising in on load, like the portfolio's reveals */
+@keyframes rise-in {
+	from {
+		opacity: 0;
+		transform: translateY(24px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
 .animate-pulse-glow {
 	animation: pulse-glow 1.6s ease-in-out infinite;
 }
@@ -100,30 +276,20 @@
 	animation: fade-in 200ms ease-out;
 }
 
-body {
-	background-color: oklch(var(--background));
-	color: oklch(var(--foreground));
-	min-height: 100vh;
-	/* Signature texture from jeydinpham.com: a faint grid plus two soft
-	   primary-colored glows tucked into opposite corners. */
-	background-image:
-		repeating-linear-gradient(0deg, #a991700d 0, #a991700d 1px, transparent 1px, transparent 28px),
-		repeating-linear-gradient(90deg, #a991700d 0, #a991700d 1px, transparent 1px, transparent 28px),
-		radial-gradient(
-			circle at 10% 12%,
-			color-mix(in oklab, rgb(var(--primary)) 14%, transparent) 0,
-			color-mix(in oklab, rgb(var(--primary)) 8%, transparent) 18%,
-			color-mix(in oklab, rgb(var(--primary)) 3.6%, transparent) 34%,
-			color-mix(in oklab, rgb(var(--primary)) 1.4%, transparent) 44%,
-			transparent 52%
-		),
-		radial-gradient(
-			circle at 90% 84%,
-			color-mix(in oklab, rgb(var(--primary)) 9%, transparent) 0,
-			color-mix(in oklab, rgb(var(--primary)) 5.4%, transparent) 20%,
-			color-mix(in oklab, rgb(var(--primary)) 2.6%, transparent) 36%,
-			color-mix(in oklab, rgb(var(--primary)) 1.1%, transparent) 46%,
-			transparent 54%
-		);
-	background-attachment: fixed;
+.animate-rise {
+	animation: rise-in 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+	animation-delay: var(--d, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.animate-rise {
+		animation: none;
+	}
+}
+
+/* keyboard focus: an accent ring on anything you can tab to */
+:where(a, button, [tabindex], input, select):focus-visible {
+	outline: 2px solid rgb(var(--accent)) !important;
+	outline-offset: 3px;
+	border-radius: 4px;
 }

@@ -62,7 +62,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
 		<div
 			role="presentation"
 			onClick={onClose}
-			className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 transition-opacity duration-200 ${
+			className={`fixed inset-0 z-50 flex items-center justify-center bg-bg/80 backdrop-blur-md p-4 transition-opacity duration-200 ${
 				visible ? 'opacity-100' : 'opacity-0'
 			}`}
 		>
@@ -71,7 +71,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
 				aria-modal="true"
 				aria-label={title}
 				onClick={(e) => e.stopPropagation()}
-				className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl p-8 transition-all duration-200 ${
+				className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-md border border-faint bg-bg-2 shadow-[0_24px_60px_rgba(0,0,0,.5)] p-6 md:p-8 transition-all duration-200 ${
 					visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
 				}`}
 			>
@@ -79,12 +79,12 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
 					type="button"
 					onClick={onClose}
 					aria-label="Close"
-					className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+					className="absolute top-4 right-4 text-dim hover:text-accent transition-colors duration-300"
 				>
 					<XIcon className="h-5 w-5" />
 				</button>
-				<h2 className="font-display text-2xl font-semibold text-foreground mb-4 pr-8">{title}</h2>
-				<div className="space-y-4 text-sm text-muted-foreground leading-relaxed">{children}</div>
+				<h2 className="font-display text-[clamp(40px,5vw,56px)] font-black uppercase leading-[0.9] tracking-[-0.005em] text-ink mb-5 pr-8">{title}</h2>
+				<div className="space-y-5 text-[15px] text-ink-2 leading-relaxed">{children}</div>
 			</div>
 		</div>
 	);
