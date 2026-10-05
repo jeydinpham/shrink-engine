@@ -13,11 +13,11 @@ interface DiagnosticsPanelProps {
 }
 
 function Row({ label, value, tone }: { label: string; value: React.ReactNode; tone?: 'good' | 'bad' | 'neutral' }) {
-	const toneClass = tone === 'good' ? 'text-secondary-foreground' : tone === 'bad' ? 'text-yellow-500' : 'text-foreground';
+	const toneClass = tone === 'good' ? 'text-accent' : tone === 'bad' ? 'text-danger' : 'text-ink';
 	return (
-		<div className="flex items-start justify-between gap-4 py-1.5 border-b border-border/60 last:border-b-0">
-			<span className="text-muted-foreground shrink-0">{label}</span>
-			<span className={`text-right font-mono text-[12px] ${toneClass}`}>{value}</span>
+		<div className="flex items-start justify-between gap-4 py-2 border-b border-faint last:border-b-0">
+			<span className="text-dim shrink-0">{label}</span>
+			<span className={`text-right font-mono text-[12px] [font-stretch:87.5%] ${toneClass}`}>{value}</span>
 		</div>
 	);
 }
@@ -91,7 +91,7 @@ export function DiagnosticsPanel({ open, onClose, decodeProbe, fileDecodeSupport
 			</p>
 
 			{decodeTimedOutButEncodeFine && (
-				<div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3 text-yellow-500">
+				<div className="rounded-md border border-accent-2/40 bg-accent-2/10 p-3.5 text-ink">
 					The decode check for this file timed out, but encoding is supported here. This looks like a slow/cold GPU
 					driver rather than a real incompatibility &mdash; re-selecting the file (or trying again after your GPU driver
 					has decoded something once already this session) may let it pass next time.
@@ -99,7 +99,7 @@ export function DiagnosticsPanel({ open, onClose, decodeProbe, fileDecodeSupport
 			)}
 
 			<div>
-				<p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground mb-1.5">This file</p>
+				<p className="mono !text-ink mb-2">This file</p>
 				<div>
 					{fileDecodeSupport === 'checking' && <Row label="Decode probe" value="checking…" />}
 					{fileDecodeSupport === null && <Row label="Decode probe" value="no file selected" />}
@@ -118,7 +118,7 @@ export function DiagnosticsPanel({ open, onClose, decodeProbe, fileDecodeSupport
 			</div>
 
 			<div>
-				<p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground mb-1.5">This browser</p>
+				<p className="mono !text-ink mb-2">This browser</p>
 				<div>
 					<Row label="WebCodecs API" value={webCodecsPresent ? 'present' : 'not present'} tone={webCodecsPresent ? 'good' : 'bad'} />
 					<Row
@@ -137,18 +137,18 @@ export function DiagnosticsPanel({ open, onClose, decodeProbe, fileDecodeSupport
 			</div>
 
 			<div>
-				<p className="font-mono text-xs uppercase tracking-[0.2em] text-foreground mb-1.5">If hardware still won&rsquo;t turn on</p>
-				<ul className="list-disc pl-4 space-y-1">
+				<p className="mono !text-ink mb-2">If hardware still won&rsquo;t turn on</p>
+				<ul className="space-y-2.5 [&>li]:relative [&>li]:pl-[22px] [&>li]:before:absolute [&>li]:before:left-0 [&>li]:before:top-[.72em] [&>li]:before:h-px [&>li]:before:w-3 [&>li]:before:bg-accent">
 					{browser?.gpuPageUrl && (
 						<li>
-							Open <code className="text-foreground">{browser.gpuPageUrl}</code> in a new tab (detected browser:{' '}
+							Open <code className="font-mono text-[13px] text-ink">{browser.gpuPageUrl}</code> in a new tab (detected browser:{' '}
 							{browser.name}) and check the video decode/encode status, plus any &ldquo;problems detected&rdquo; section for
 							the specific reason &mdash; often a driver version on the browser&rsquo;s internal blocklist.
 						</li>
 					)}
 					{!browser?.gpuPageUrl && browser && (
 						<li>
-							Detected browser: <strong className="text-foreground">{browser.name}</strong>. {browser.accelerationSettingHint}
+							Detected browser: <strong className="font-medium text-ink">{browser.name}</strong>. {browser.accelerationSettingHint}
 						</li>
 					)}
 					<li>Make sure your GPU driver is up to date &mdash; brand-new GPUs are sometimes temporarily blocklisted.</li>
@@ -159,7 +159,7 @@ export function DiagnosticsPanel({ open, onClose, decodeProbe, fileDecodeSupport
 			<button
 				type="button"
 				onClick={copyReport}
-				className="w-full py-2 rounded-full bg-muted text-foreground text-sm font-medium hover:bg-accent transition-colors"
+				className="btn w-full"
 			>
 				{copied ? 'Copied ✓' : 'Copy diagnostics report'}
 			</button>

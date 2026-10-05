@@ -1,15 +1,31 @@
-import { Bricolage_Grotesque } from 'next/font/google';
+import localFont from 'next/font/local';
+import { Hanken_Grotesk, Martian_Mono } from 'next/font/google';
 
-// Matches jeydinpham.com's type system: Geist Sans/Mono are self-hosted via
-// plain @font-face in globals.css (see public/fonts/) rather than next/font
-// local loading — the `geist` npm package's next/font/local usage trips an
-// ERR_UNSUPPORTED_DIR_IMPORT during Next's page-data collection on this
-// Next/Node combo. Bricolage Grotesque is a real Google Font, so next/font
-// handles it (and self-hosts it) without issue.
-export const bricolage = Bricolage_Grotesque({
-	subsets: ['latin'],
+// jeydinpham.com's type system: Big Shoulders for display (uppercase, heavy),
+// Hanken Grotesk for body copy, Martian Mono (narrowed via its wdth axis) for
+// labels.
+//
+// Big Shoulders is self-hosted: this Next version only knows the older
+// "Big Shoulders Display" family, which is the 72pt optical size and noticeably
+// narrower than what the site serves. This file is the exact latin subset
+// jeydinpham.com ships (variable weight, default optical size).
+const display = localFont({
+	src: './BigShoulders-latin.woff2',
 	variable: '--font-display',
-	display: 'swap',
+	weight: '100 900',
+	adjustFontFallback: false,
 });
 
-export const fontVariables = bricolage.variable;
+const body = Hanken_Grotesk({
+	subsets: ['latin'],
+	variable: '--font-body',
+	weight: ['400', '500', '600'],
+});
+
+const mono = Martian_Mono({
+	subsets: ['latin'],
+	variable: '--font-mono',
+	axes: ['wdth'],
+});
+
+export const fontVariables = `${display.variable} ${body.variable} ${mono.variable}`;

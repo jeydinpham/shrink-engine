@@ -8,13 +8,13 @@ interface SwitchProps {
 	description?: React.ReactNode;
 }
 
-/** A labeled toggle switch, styled to match jeydinpham.com's shadcn-derived component set. */
+/** A labeled toggle switch, in jeydinpham.com's style: a faint track that fills with the accent. */
 export function Switch({ checked, onChange, disabled, label, description }: SwitchProps) {
 	return (
 		<label className={`flex items-center justify-between gap-4 ${disabled ? 'opacity-50' : 'cursor-pointer'}`}>
-			<span className="text-sm text-foreground">
+			<span className="text-[15px] text-ink">
 				{label}
-				{description && <span className="block text-xs text-muted-foreground mt-0.5">{description}</span>}
+				{description && <span className="block text-[13px] text-dim mt-0.5">{description}</span>}
 			</span>
 			<button
 				type="button"
@@ -22,13 +22,13 @@ export function Switch({ checked, onChange, disabled, label, description }: Swit
 				aria-checked={checked}
 				disabled={disabled}
 				onClick={() => onChange(!checked)}
-				className={`relative shrink-0 inline-flex h-6 w-10 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-					checked ? 'bg-primary' : 'bg-muted'
+				className={`relative shrink-0 inline-flex h-6 w-10 items-center rounded-full border transition-colors duration-300 ${
+					checked ? 'bg-accent border-accent' : 'bg-bg border-faint'
 				}`}
 			>
 				<span
-					className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
-						checked ? 'translate-x-5' : 'translate-x-1'
+					className={`inline-block h-4 w-4 transform rounded-full shadow-sm transition-[transform,background-color] duration-300 ease-[cubic-bezier(.65,0,.35,1)] ${
+						checked ? 'translate-x-[19px] bg-on-accent' : 'translate-x-[3px] bg-dim'
 					}`}
 				/>
 			</button>
